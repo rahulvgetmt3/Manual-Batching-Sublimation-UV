@@ -25,6 +25,9 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 - [ ] **Real logins:** set real `PORTAL_USERS` and a long `SECRET_KEY`, replacing the test `uvteam` login.
 - [ ] **Disk:** decide how long to keep runs. A full-bed Spot PDF is about 16 MB per 5 pieces, so expect a few hundred MB for a full bed.
 
+- [ ] **Team history visible to Rahul:** decide on a shared runs folder (OneDrive, Google Drive or network drive) for the testing period. Otherwise it comes automatically with hosting.
+- [ ] **Rebuild the team ZIP** (`python3 tools/make_team_zip.py`) before giving it to any new PC. The current TEAM zip predates the UTF-8 fix.
+
 **Known data issues**
 - [ ] **B433C9774F** (Mirror 17-P) returned 403 earlier, then downloaded fine later. Watch for other old printcloud `fetch_url`s.
 
@@ -37,6 +40,11 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 
 ## Log
+
+### 2026-10-11 (end): Login rename, Windows UTF-8 fix
+- Rahul's Mac login was renamed `test` to **Rahul**; 34 earlier test runs were relabelled. Logins are now case-insensitive and keep the display name (`222788c`).
+- **Windows mojibake fixed** (`df707b0`): the team UI showed "â¬‡ ZIP" and "Â·" because Python defaults to cp1252 on Windows. Static HTML and `run.json` are now read and written as UTF-8. Shipped as `dist/app-update.zip` (the `app` folder only), and it **worked on the team PC**.
+- Rahul asked to see the team's history from his login without telling them. The options are recorded in [uv-mix-portal-overview](docs/claude-memory/uv-mix-portal-overview.md), and his choice of shared folder is pending.
 
 ### 2026-10-11 (end of day): Team connected; handover saved
 - Rahul ran `tools/make_team_zip.py` and the **team PC connected to Pulse**. The team now tests on their own, with login `uvteam`; the password is in the ZIP's START HERE.txt.

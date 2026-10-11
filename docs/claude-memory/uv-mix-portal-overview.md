@@ -21,6 +21,13 @@ These come as a ZIP, and runs are kept in a history.
   - layouts are right-aligned on the full bed;
   - the Reconcile sheet uses the `LUX-15-PL` model format.
 - **Team testing:** the team tests on Windows PCs with the local package (`Setup.bat` / `Start UV Mix.bat`). Rahul built the pre-filled team ZIP, and the **team PC connected to Pulse**.
+- **Logins:** Rahul's Mac login is **Rahul** (renamed from `test`). Login is case-insensitive and the display name keeps its case. The team login on test PCs is `uvteam`. Rahul can open the team's portal and has seen their runs.
+- **Seeing the team's history from Rahul's login:** Rahul asked for this and doesn't want to tell the team. Each test PC currently keeps its own `data\runs`. Options given:
+  1. the hosted version, where one History holds all users;
+  2. during testing, a shared cloud folder for `RUNS_DIR`, with Rahul's Mac pointed at it. This is pending his choice of OneDrive, Google Drive or a network drive;
+  3. ask for their files.
+
+  I advised a one-line note to the team (work-log visibility for QA), but it's his call. **Don't write to the Pulse production DB for this.**
 - **Still to confirm on the printer:** the new Die PDF (PDF 1.6, hidden Artwork layer, outlined labels) and the Spot PDF.
 - **Code:** at https://github.com/rahulvgetmt3/uv-mix-batch (private, Rahul's personal account, **testing only**). Plan: once testing passes, move it to the **MT3-Global-Tech-Inc** org and host it properly. Hosting is AWS next to the DB, with HTTPS, team logins, a read-only DB user, and the DB password rotated first.
 

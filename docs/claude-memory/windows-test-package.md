@@ -21,6 +21,15 @@ Both `.bat` files call `windows/*.ps1` with `-ExecutionPolicy Bypass`. Guide: `R
 
 **Why:** Rahul wanted the team to test fully without needing him, before the proper hosted deployment.
 
-**How to apply:** after code changes, rebuild the plain ZIP. Ask Rahul to rerun `make_team_zip.py` (this gives a new portal password each time), or ask the team to replace just the `app/` folder.
+**Updating team PCs:** after code changes, run `git archive --format=zip -o dist/app-update.zip HEAD app`. The team then:
+1. closes the Start window;
+2. unzips the update into their folder and replaces `app`;
+3. restarts.
+
+Their settings, login and history are kept. This worked on 2026-10-11. For new PCs, rebuild `UV-Mix-Batch-Windows.zip` and ask Rahul to rerun `make_team_zip.py`, which creates a new `uvteam` password each time.
+
+**Windows gotcha (fixed 2026-10-11):** Python's `read_text()` / `open()` without an encoding uses **cp1252 on Windows**. The UI showed mojibake ("â¬‡ ZIP", "LUX Â· 2 pieces"). **Always pass `encoding="utf-8"`** for text files in `app/`. Mac testing won't catch this.
+
+**How to apply:** test anything text-related with Windows in mind, and ship fixes through `app-update.zip`.
 
 Related: [[uv-mix-portal-overview]], [[pulse-lookup-for-uv-mix]].

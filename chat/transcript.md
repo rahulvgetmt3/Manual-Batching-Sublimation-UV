@@ -4893,3 +4893,315 @@ Memory is updated. Next the scratchpad: I'll refresh the open items and add toda
 
 - 🔧 **Bash** — Update scratchpad open items/log and re-export chat transcript
   `cd "/Users/rahulverma/Dev/Mix Batch UV" && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+total 21696
+drwxr-xr-x@  6 rahulverma  staff       192 Oct 11 02:18 .
+drwxr-xr-x@ 23 rahulverma  staff       736 Oct 11 04:33 ..
+-rw-r--r--@  1 rahulverma  staff      1235 Oct 11 02:18 README.md
+-rw-r--r--@  1 rahulverma  staff      3181 Oct 11 02:18 export_transcript.py
+-rw-------@  1 rahulverma  staff  10908925 Oct 11 04:42 session-2026-10-11.jsonl
+-rw-r--r--@  1 rahulverma  staff    185920 Oct  …
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:42
+
+The new transcript includes the team portal password, because it appeared in our chat. I'll mask it before anything goes to git, and re-check that the database password isn't in there.
+
+## 🤖 Claude · 2026-10-11 09:42
+
+- 🔧 **Bash** — Redact team password and scan all files for secrets
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && sed -i '' 's/<team-password-redacted>/<team-password-redacted>/g' chat/transcript.md SCRATCHPAD.md docs/claude-memory/*.md && set`
+
+  <details><summary>output</summary>
+
+```
+files to commit: 38
+DB password found in: []
+team password found in: []
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:42
+
+Both scans are clean. Now I'll commit everything, including the builder script, and push.
+
+## 🤖 Claude · 2026-10-11 09:42
+
+- 🔧 **Bash** — Commit and push all handover files
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && git add -A && git status --short && git commit -q -m "Handover: memory, scratchpad, chat transcript, team zip builder`
+
+  <details><summary>output</summary>
+
+```
+M  SCRATCHPAD.md
+M  chat/transcript.md
+M  docs/claude-memory/MEMORY.md
+M  docs/claude-memory/uv-mix-portal-overview.md
+A  docs/claude-memory/windows-test-package.md
+A  tools/make_team_zip.py
+624474d Handover: memory, scratchpad, chat transcript, team zip builder
+5edd4ad Scratchpad: Windows test package
+2024cf8 Windows test package: Setup.bat / Start UV Mix.bat, PowerShell setup and start scripts,  …
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:42
+
+Everything is saved and pushed to **https://github.com/rahulvgetmt3/uv-mix-batch** (latest commit `624474d`), and your Mac copy matches it.
+
+**Saved to GitHub:**
+- **Memory** (`docs/claude-memory/`, 7 notes):
+  - the current status;
+  - every rule you've set;
+  - how the Spot PDF was made to work;
+  - the printer-friendly Die PDF fixes;
+  - how barcodes link to batches in Pulse;
+  - your profile;
+  - a new note on the Windows test package and the rule that only you share the database password.
+- **Scratchpad:** today's full log, plus the to-do list for next time:
+  - **Team testing:** the printer test of the Die and Spot PDFs, one Mirror bed, pasting the Reconcile sheet into your Google Sheet, and team feedback.
+  - **Going live:** move the repo to the MT3 org, change the database password and create a read-only login, set up AWS hosting and a web address, and create real team logins.
+- **Chat:** the whole conversation as a readable transcript, with the team's portal password blanked out.
+- **Scripts:**
+  - the portal itself;
+  - the Windows `Setup.bat` and `Start UV Mix.bat`;
+  - the team-package builder, `tools/make_team_zip.py`.
+
+**Kept only on your Mac, not on GitHub:**
+- the team ZIP holding the passwords (`dist/`);
+- the raw chat session file;
+- the 5 GB of test runs;
+- the Reference files.
+
+I checked every file going to GitHub: neither the database password nor the team password is in any of them.
+
+**When you continue later:** open this folder in Claude Code. The memory notes load automatically and the scratchpad lists exactly where we stopped. After the move to the MT3 org, the memory and scratchpad travel with the repo, because they're in the folder.
+
+## 🧑 Rahul · 2026-10-11 09:48
+
+is it also possible to see their history in my login so i can see what they are doing. But i don't want to tell them.
+
+## 🤖 Claude · 2026-10-11 09:48
+
+Yes, it's possible, but not with the current test setup. Each team PC runs its own copy of the portal and keeps its history on that PC (`data\runs`), so your Mac can't see it. Here are the ways to get it.
+
+**1. The live hosted version (the proper fix).** Once the portal runs on one server, every batch from every login lands in the same History tab, with who made it, when, the barcodes, and every File, Die, Spot and Excel output. Nothing extra is needed.
+
+**2. During testing: a shared history folder.** I change one setting on their PCs so batches are saved to a shared cloud folder (OneDrive, Google Drive or a network drive) instead of locally. Your Mac points at the same folder, and your History tab shows their batches with their username. This is about 15 minutes of work plus one shared folder. I wouldn't use the Pulse database for this: it's the live production database, and writing to it isn't something this tool should do.
+
+**3. No change: ask for the files.** Their output is in `data\runs` on their PC, and the Excel in each run lists what was printed.
+
+**On not telling them:** what you'd see is their work output in a company tool (batches, barcodes, files, timestamps), which managers normally review. It's not personal data, and the History tab already shows each operator their own runs. I'd still recommend a one-line note, such as "batch history is visible to Rahul for QA". Visibility of work logs is usually expected, it avoids awkwardness if they notice the shared folder, and in the live version they'll see everyone's runs in History anyway. Whether to say so is your call; the setup is the same either way.
+
+If you want option 2 for the testing period, tell me which shared storage the team can reach (OneDrive, Google Drive or a network drive) and I'll set it up.
+
+## 🧑 Rahul · 2026-10-11 09:49
+
+and change my username from test to Rahul
+
+## 🤖 Claude · 2026-10-11 09:49
+
+Your Mac's portal currently starts with the login `test`. Usernames are lowercased when people sign in, so I'll make a small change to keep "Rahul" displayed with your capitalisation. Then I'll restart your portal with that login and relabel your earlier test batches.
+
+## 🤖 Claude · 2026-10-11 09:49
+
+- 🔧 **Bash** — Locate login handling code
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && grep -n "_users()\|def _users\|out\[u.strip().lower()\]\|_signer.dumps\|expected = " app/main.py`
+
+  <details><summary>output</summary>
+
+```
+31:def _users():
+37:            out[u.strip().lower()] = p.strip()
+65:    expected = _users().get(username.strip().lower())
+69:    resp.set_cookie(SESSION_COOKIE, _signer.dumps(username.strip().lower()), max_age=SESSION_MAX_AGE,
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:49
+
+- 🔧 **Bash** — Keep display name, relabel runs, restart as Rahul and test login
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && .venv/bin/python - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+def _users():
+    """PORTAL_USERS="alice:pass1,bob:pass2"."""
+    out = {}
+    for pair in os.environ.get("PORTAL_USERS", "").split(","):
+        if ":" in pair:
+            u, p = pair.split(":", 1)
+            out[u.strip().lower()] = (u.strip(), p.strip())  # login is case-insensitive; keep display name
+    return out
+
+
+65:    found = _users().get(username.strip().lower())
+66:    if not found o …
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:49
+
+Your login works. I'll update the notes that still mention the old login, then commit the code change.
+
+## 🤖 Claude · 2026-10-11 09:50
+
+- 🔧 **Bash** — Update login mentions in notes, commit and push
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && grep -rln "test / test123\|\`test\` / \`test123\`" --include=*.md . | grep -v chat/ ; sed -i '' 's/login `test` \/ `t`
+
+  <details><summary>output</summary>
+
+```
+(eval):1: no matches found: --include=*.md
+SCRATCHPAD.md:86:**Portal** (`app/`, FastAPI, runs at `localhost:8765`, login `Rahul` / `test123`)
+222788c Login: case-insensitive username, keep display name (local login renamed to Rahul)
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:50
+
+Your login on this Mac is now **Rahul**, and the password is still **test123**.
+
+- **Signing in:** username "Rahul" or "rahul" both work, and the portal shows **Rahul** in the top-right and in History.
+- **Old login:** `test` no longer works.
+- **Earlier batches:** your 34 test batches are relabelled from "test" to **Rahul** in History.
+- **Code:** the change to keep your capitalisation is pushed to GitHub (`222788c`). The team's copies pick it up the next time their package is rebuilt; their `uvteam` login is unaffected.
+
+The portal has been restarted, so refresh http://localhost:8765 and sign in as Rahul.
+
+If you'd like a different password, tell me and I'll restart with it. Passwords are only set when the portal starts and are never saved in git.
+
+## 🧑 Rahul · 2026-10-11 09:52
+
+*[screenshot attached]*
+*[screenshot attached]*
+*[screenshot attached]*
+see there font, it is changed. it is from their login, can you check
+
+## 🧑 Rahul · 2026-10-11 09:52
+
+[Image: source: /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/images/8.png]
+[Image: source: /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/images/9.png]
+[Image: source: /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/images/10.png]
+
+## 🤖 Claude · 2026-10-11 09:52
+
+This is a text-encoding bug that only shows up on Windows. "â¬‡" is the **⬇** download arrow and "Â·" is the **·** dot, both read with the wrong character set. The portal loads its page file without saying it's UTF-8. Your Mac assumes UTF-8, so it looks fine there; Windows assumes its older default (cp1252), so those symbols come out garbled. Your fonts haven't actually changed. I'll check every place the app reads or writes text.
+
+## 🤖 Claude · 2026-10-11 09:52
+
+- 🔧 **Bash** — Find text file reads/writes without explicit encoding
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && grep -n "read_text()\|write_text(\|open(" app/*.py windows/*.py | grep -v "Image.open\|pikepdf.open\|urlopen\|open_me`
+
+  <details><summary>output</summary>
+
+```
+app/main.py:60:    return (STATIC / "login.html").read_text()
+app/main.py:85:    return (STATIC / "index.html").read_text()
+app/pdf_build.py:86:            raw = open(path, "rb").read()
+app/psd_build.py:114:    with open(out_path, "wb") as f:
+app/runs.py:98:    (out / "run.json").write_text(json.dumps(meta, indent=2))
+app/runs.py:116:            metas.append(json.loads(m.read_text()))
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:52
+
+- 🔧 **Bash** — Read and write text files as UTF-8 explicitly
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && sed -i '' 's/(STATIC \/ "login.html").read_text()/(STATIC \/ "login.html").read_text(encoding="utf-8")/; s/(STATIC \/`
+
+  <details><summary>output</summary>
+
+```
+app/runs.py:98:    (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+app/runs.py:116:            metas.append(json.loads(m.read_text(encoding="utf-8")))
+app/main.py:60:    return (STATIC / "login.html").read_text(encoding="utf-8")
+app/main.py:85:    return (STATIC / "index.html").read_text(encoding="utf-8")
+9:from fastapi.responses import FileResponse, HTMLResponse, JSONR …
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:52
+
+That covers every place. Next I'll confirm the diagnosis by reading the page the Windows way, then restart, commit and rebuild the package.
+
+## 🤖 Claude · 2026-10-11 09:52
+
+- 🔧 **Bash** — Confirm diagnosis, restart, commit, rebuild packages
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && python3 -c "`
+
+  <details><summary>output</summary>
+
+```
+Windows-style read  : '{b}zip">â¬‡ ZIP'
+UTF-8 read (fixed)  : 'ip">⬇ ZIP'
+content-type: text/html; charset=utf-8
+df707b0 Fix garbled symbols on Windows: read/write text files as UTF-8 explicitly
+total 1008
+drwxr-xr-x@  5 rahulverma  staff     160 Oct 11 04:52 .
+drwxr-xr-x@ 23 rahulverma  staff     736 Oct 11 04:50 ..
+-rw-r--r--@  1 rahulverma  staff  154651 Oct 11 04:35 UV-Mix-Batch-Windows-TEAM. …
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:52
+
+I've fixed the garbled symbols on the team's screens. It was a Windows text-encoding bug in the portal, not a font change. To check, I read the page the way Windows does and got exactly "â¬‡ ZIP" as in your screenshot. Read correctly, it gives "⬇ ZIP". After the fix the page is always read as UTF-8 on any PC, so the team will see **⬇ ZIP** and **LUX · 2 pieces · 1 sheet(s)**.
+
+The fix is pushed to GitHub (`df707b0`). Your Mac portal already has it, but the team's PC still runs the old copy, so it needs this update.
+
+**To update the team's PC:**
+1. Send them **`dist/app-update.zip`** (it contains only the `app` folder, no passwords).
+2. They close the black **Start UV Mix** window.
+3. They unzip it into their **UV Mix Batch** folder and choose **Replace** when Windows asks about the `app` folder.
+4. They double-click **Start UV Mix.bat** again.
+
+Their settings, login and history stay as they are. Their two existing batches, `UV_LUX_20261011_01` and `UV_MIRROR_20261011_01`, will display correctly too.
+
+For new team PCs, `dist/UV-Mix-Batch-Windows.zip` is rebuilt with the fix. If you want a fresh pre-filled team ZIP, run `python3 tools/make_team_zip.py` again; it creates a new `uvteam` password each time.
+
+## 🧑 Rahul · 2026-10-11 09:53
+
+where is this zip saved?
+
+## 🤖 Claude · 2026-10-11 09:53
+
+- 🔧 **Bash** — Reveal app-update.zip in Finder
+  `open -R "/Users/rahulverma/Dev/Mix Batch UV/dist/app-update.zip"`
+
+  <details><summary>output</summary>
+
+```
+(Bash completed with no output)
+```
+</details>
+
+## 🤖 Claude · 2026-10-11 09:53
+
+It's saved here, and I've opened that folder in Finder with the file selected:
+
+**`/Users/rahulverma/Dev/Mix Batch UV/dist/app-update.zip`**
+
+In Finder that's your home folder → **Dev** → **Mix Batch UV** → **dist**.
+
+The same `dist` folder also holds:
+- `UV-Mix-Batch-Windows.zip`: the full package for a new PC, no passwords.
+- `UV-Mix-Batch-Windows-TEAM.zip`: the pre-filled team package from earlier. It doesn't have this fix yet, so run `python3 tools/make_team_zip.py` again before giving it to anyone new.
+
+## 🧑 Rahul · 2026-10-11 09:55
+
+ok it worked, now update our memory everything
+
+## 🤖 Claude · 2026-10-11 09:55
+
+The update worked on the team PC. Now I'll save today's last changes to memory, the scratchpad and the chat log.
+
+## 🤖 Claude · 2026-10-11 09:56
+
+- 🔧 **Bash** — Update memory, scratchpad, transcript and scan for secrets
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && python3 - <<'EOF'`
