@@ -57,7 +57,7 @@ def _require_user(request):
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
-    return (STATIC / "login.html").read_text()
+    return (STATIC / "login.html").read_text(encoding="utf-8")
 
 
 @app.post("/login")
@@ -82,7 +82,7 @@ def logout():
 def index(request: Request):
     if not _current_user(request):
         return RedirectResponse("/login", status_code=303)
-    return (STATIC / "index.html").read_text()
+    return (STATIC / "index.html").read_text(encoding="utf-8")
 
 
 @app.get("/api/me")

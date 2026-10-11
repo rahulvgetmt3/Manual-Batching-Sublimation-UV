@@ -95,7 +95,7 @@ def create_run(barcodes, user=""):
         "sheets": sheets,
         "barcodes": barcodes,
     }
-    (out / "run.json").write_text(json.dumps(meta, indent=2))
+    (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
     zip_path = out / f"{run_id}.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
@@ -113,7 +113,7 @@ def list_runs(limit=100):
     for d in RUNS_DIR.iterdir():
         m = d / "run.json"
         if m.exists():
-            metas.append(json.loads(m.read_text()))
+            metas.append(json.loads(m.read_text(encoding="utf-8")))
     return sorted(metas, key=lambda m: m["created"], reverse=True)[:limit]
 
 
