@@ -2,6 +2,8 @@
 
 This is the running log of work on the UV Mix Batch portal. Notes on how things work live in [docs/claude-memory/](docs/claude-memory/); Claude's memory for this folder links there. How to run and deploy is in [README.md](README.md). The full chat is in [chat/](chat/).
 
+**Repo:** https://github.com/rahulvgetmt3/uv-mix-batch (private, branch `main`). `data/`, `Reference/`, `.venv` and the raw chat `.jsonl` are git-ignored.
+
 To keep it current: after each session, add a dated entry at the top of the **Log**, add a row to **Sessions**, and update **Open items**.
 
 ## Open items
@@ -33,6 +35,10 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 
 ## Log
+
+### 2026-10-11 (later): Pushed to GitHub
+- Initialised git and pushed to `rahulvgetmt3/uv-mix-batch` (first commit `18162a3`). The commit identity is set for this repo only: `rahulvgetmt3 <rahulv@getmt3.com>`.
+- The repo was created under Rahul's personal account, not the MT3-Global-Tech-Inc org. Transfer it to the org later if the team needs access.
 
 ### 2026-10-11 (later): Spot PDF works; Reconcile model format
 - **Spot PDF confirmed working in Photoshop** (Spot Color 1 appears). The missing piece was Photoshop's `Alph` spot-channel definition block, together with the Photoshop Producer/XMP identification. Details are in [photoshop-spot-channel-psd](docs/claude-memory/photoshop-spot-channel-psd.md).
