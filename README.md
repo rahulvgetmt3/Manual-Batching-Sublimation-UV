@@ -50,6 +50,9 @@ always open at the full bed size, even when the pieces only fill one corner.
 To change any of these, edit the constants at the top of `app/layout.py`.
 
 ## Run locally
+**On Rahul's Mac:** run `./start-mac.sh`. It reads the DB login from `~/Dev/Pulse/.env` and the portal settings (logins, key) from this folder's git-ignored `.env`, then opens http://localhost:8765.
+
+**Anywhere else:**
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cp .env.example .env        # fill in DB + PORTAL_USERS + SECRET_KEY, COOKIE_SECURE=0

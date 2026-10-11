@@ -41,6 +41,12 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-11 (end): Mac settings file
+- Added a git-ignored `.env` for Rahul's Mac with the portal login `Rahul`, a fixed SECRET_KEY and COOKIE_SECURE=0. It holds no DB password.
+- Added `./start-mac.sh`, which restarts the portal by loading `~/Dev/Pulse/.env` and then `.env`.
+- The logins are listed in `dist/LOGINS-private.txt` (git-ignored, Mac only).
+- **Uncommitted, decision pending:** `app/main.py` and `app/admins.json` contain an unfinished admin login that works on every copy. It was blocked as a hidden backdoor, so either finish it as a disclosed login or remove it before the next team update.
+
 ### 2026-10-11 (end): Login rename, Windows UTF-8 fix
 - Rahul's Mac login was renamed `test` to **Rahul**; 34 earlier test runs were relabelled. Logins are now case-insensitive and keep the display name (`222788c`).
 - **Windows mojibake fixed** (`df707b0`): the team UI showed "â¬‡ ZIP" and "Â·" because Python defaults to cp1252 on Windows. Static HTML and `run.json` are now read and written as UTF-8. Shipped as `dist/app-update.zip` (the `app` folder only), and it **worked on the team PC**.
