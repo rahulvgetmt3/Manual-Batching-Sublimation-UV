@@ -8,33 +8,40 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 
 ## Open items
 
-**Testing now**
-- [ ] **Real print test**, in progress from 2026-10-11. Print File, Die and Spot from portal runs, including several batches and a multi-sheet run. Then confirm:
-  - the die lines up with the artwork on the bed;
-  - the right-aligned start matches how the bed is loaded;
-  - the Spot PSD, saved from Photoshop as PDF, prints white or spot only where there's artwork;
+**Team testing (from 2026-10-11, on Windows PCs; team PC connected to Pulse)**
+- [ ] **Print test on the printer.** Print File, Die and Spot from portal runs, including several batches and a multi-sheet run (140+ pieces). Confirm:
+  - the printer accepts the new **Die PDF** (PDF 1.6, hidden Artwork layer, outlined labels). The old one, a few KB, was rejected;
+  - the **Spot PDF** prints white or spot only where there's artwork, sent directly without re-saving in Photoshop;
+  - the die lines up with the artwork, and the right-aligned start matches how the bed is loaded;
   - the RIP accepts the File PDF's colours, which are original RGB with no CMYK conversion.
-- [ ] **Check one Mirror bed** end to end. Only LUX has been visually checked so far.
-- [ ] **Paste-test the Reconcile sheet** into the team's Google Sheet. The Model dropdown may need the iPhone names added.
+- [ ] **Check one Mirror bed** end to end.
+- [ ] **Paste-test the Reconcile sheet** (Model = `LUX-15-PL` style) into the team's Google Sheet.
+- [ ] **Feedback from the team** after a full day of use.
 
-**Before going live**
-- [ ] **Rotate the Pulse DB password.** It's exposed (see `~/Dev/Pulse/README.md`). Create a **read-only** DB user for the portal.
-- [ ] **AWS access:** a small EC2 or Lightsail instance in the DB's region, with a security-group rule to port 3306. Plus a domain such as `uvmix.getmt3.com` and HTTPS through Caddy. Steps are in README › Deploy.
-- [ ] **Real logins:** set real `PORTAL_USERS` and a long `SECRET_KEY` for the team.
-- [ ] **Disk:** decide how long to keep runs on the server. A full-bed Spot PSD can be a few hundred MB.
+**Move to live (after testing passes)**
+- [ ] **Move the repo** `rahulvgetmt3/uv-mix-batch` to the **MT3-Global-Tech-Inc** org (GitHub › Settings › Transfer ownership).
+- [ ] **Rotate the Pulse DB password**, which is exposed and now also on the team test PCs. Create a **read-only** DB user for the portal, then rebuild the team ZIP.
+- [ ] **AWS hosting:** an EC2 or Lightsail instance in the DB's region, with a security-group rule to port 3306, a domain such as `uvmix.getmt3.com`, and HTTPS through Caddy. See README › Deploy.
+- [ ] **Real logins:** set real `PORTAL_USERS` and a long `SECRET_KEY`, replacing the test `uvteam` login.
+- [ ] **Disk:** decide how long to keep runs. A full-bed Spot PDF is about 16 MB per 5 pieces, so expect a few hundred MB for a full bed.
 
 **Known data issues**
-- [ ] **B433C9774F** (Mirror 17-P) points to an old 2024 printcloud file that returns 403. It needs a new `fetch_url` in Pulse.
+- [ ] **B433C9774F** (Mirror 17-P) returned 403 earlier, then downloaded fine later. Watch for other old printcloud `fetch_url`s.
 
 ## Sessions
 
 | Dates | Machine | Session | Main topics |
 |---|---|---|---|
-| 2026-10-11 | Mac | `38c655b4` | HP and Pulse access check; Current Work counts; LUX file download; portal designed and built (scan, bulk, upload, LUX/Mirror batches, File/Die/Spot/Excel, history, login); fixes for full-bed bounding box, right-aligned layout, spot channel as PSD |
+| 2026-10-11 | Mac | `38c655b4` | HP and Pulse access check; Current Work counts; LUX file download; portal designed and built (scan, bulk, upload, LUX/Mirror batches, File/Die/Spot/Excel, history, login); fixes for full-bed bounding box, right-aligned layout, Spot as a Photoshop-style PDF (Alph block), RIP-safe Die, Reconcile `LUX-15-PL`; GitHub repo; Windows test package; team connected |
 
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 
 ## Log
+
+### 2026-10-11 (end of day): Team connected; handover saved
+- Rahul ran `tools/make_team_zip.py` and the **team PC connected to Pulse**. The team now tests on their own, with login `uvteam`; the password is in the ZIP's START HERE.txt.
+- `tools/make_team_zip.py` builds `dist/UV-Mix-Batch-Windows-TEAM.zip` with a pre-filled `.env`. It contains no secrets itself; credentials are read at run time from `~/Dev/Pulse/.env`, and `dist/` is git-ignored.
+- Saved memory, this scratchpad and the chat transcript, and pushed. **Next session:** pick up from **Open items**, starting with the printer results and then the move to the MT3 org and hosting.
 
 ### 2026-10-11 (later): Windows test package
 - For team testing only; the live version will be hosted, and the repo moved to the MT3 org afterwards.
