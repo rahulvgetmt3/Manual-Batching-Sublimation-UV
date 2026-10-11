@@ -1,0 +1,85 @@
+# Scratchpad
+
+This is the running log of work on the UV Mix Batch portal. Notes on how things work live in [docs/claude-memory/](docs/claude-memory/); Claude's memory for this folder links there. How to run and deploy is in [README.md](README.md). The full chat is in [chat/](chat/).
+
+To keep it current: after each session, add a dated entry at the top of the **Log**, add a row to **Sessions**, and update **Open items**.
+
+## Open items
+
+**Testing now**
+- [ ] **Real print test**, in progress from 2026-10-11. Print File, Die and Spot from portal runs, including several batches and a multi-sheet run. Then confirm:
+  - the die lines up with the artwork on the bed;
+  - the right-aligned start matches how the bed is loaded;
+  - the Spot PSD, saved from Photoshop as PDF, prints white or spot only where there's artwork;
+  - the RIP accepts the File PDF's colours, which are original RGB with no CMYK conversion.
+- [ ] **Check one Mirror bed** end to end. Only LUX has been visually checked so far.
+- [ ] **Paste-test the Reconcile sheet** into the team's Google Sheet. The Model dropdown may need the iPhone names added.
+
+**Before going live**
+- [ ] **Rotate the Pulse DB password.** It's exposed (see `~/Dev/Pulse/README.md`). Create a **read-only** DB user for the portal.
+- [ ] **AWS access:** a small EC2 or Lightsail instance in the DB's region, with a security-group rule to port 3306. Plus a domain such as `uvmix.getmt3.com` and HTTPS through Caddy. Steps are in README › Deploy.
+- [ ] **Real logins:** set real `PORTAL_USERS` and a long `SECRET_KEY` for the team.
+- [ ] **Disk:** decide how long to keep runs on the server. A full-bed Spot PSD can be a few hundred MB.
+
+**Known data issues**
+- [ ] **B433C9774F** (Mirror 17-P) points to an old 2024 printcloud file that returns 403. It needs a new `fetch_url` in Pulse.
+
+## Sessions
+
+| Dates | Machine | Session | Main topics |
+|---|---|---|---|
+| 2026-10-11 | Mac | `38c655b4` | HP and Pulse access check; Current Work counts; LUX file download; portal designed and built (scan, bulk, upload, LUX/Mirror batches, File/Die/Spot/Excel, history, login); fixes for full-bed bounding box, right-aligned layout, spot channel as PSD |
+
+The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
+
+## Log
+
+### 2026-10-11 (later): Spot PDF works; Reconcile model format
+- **Spot PDF confirmed working in Photoshop** (Spot Color 1 appears). The missing piece was Photoshop's `Alph` spot-channel definition block, together with the Photoshop Producer/XMP identification. Details are in [photoshop-spot-channel-psd](docs/claude-memory/photoshop-spot-channel-psd.md).
+- **Reconcile sheet:** Model now shows line + die label (`LUX-15-PL`, `MIRROR-17-PM`) instead of the Pulse model name. Test runs: `UV_LUX_20261011_28`, `UV_MIRROR_20261011_06`.
+- **Still to confirm:** Spot PDF and the new Die PDF on the printer.
+
+### 2026-10-11 (later): Spot file is a PDF again
+- Rahul needs the spot file as a PDF. Added `app/spot_pdf.py`, a Photoshop-style PDF with the same page content and private round-trip data as the team's file (details in [photoshop-spot-channel-psd](docs/claude-memory/photoshop-spot-channel-psd.md)).
+- **Checks on test run `UV_LUX_20261011_21`:**
+  - Spot PDF is 16 MB, built in 7.5 s.
+  - Spot ink equals the artwork's opacity.
+  - Layer pixels equal the source files.
+  - The layer block lengths are internally consistent.
+- **To confirm:** it opens in Photoshop with the Spot Color 1 channel, and it prints on the printer.
+
+### 2026-10-11 (later): Printer rejected the Die PDF
+- Rahul reported that `UV_MIRROR_20261011_04`'s Die PDF wouldn't load on the printer because it was only a few KB.
+- **Rebuilt it like the team's Illustrator die:**
+  - PDF 1.6 instead of 1.3; transparency needs 1.4 or later;
+  - all page boxes set;
+  - labels as vector outlines, so no unembedded Helvetica;
+  - a hidden Artwork layer plus a visible Die layer.
+- The same batch was regenerated as `UV_MIRROR_20261011_05`. Its Die PDF is now about 1.3 MB. **Waiting for the printer retest.**
+- B433C9774F downloaded fine this time; the earlier 403 has cleared.
+
+### 2026-10-11: Portal built; print test next
+**HP and Pulse**
+- Confirmed access to both: SiteFlow API (`~/Dev/HP Siteflow/.env`) and Pulse MySQL (`~/Dev/Pulse/.env`, IP 122.176.110.84 allowlisted).
+- Current Work matched SiteFlow live batches: Essential 4, Bold 7 (screen showed 2 mid-close), Classic 16, Lux 5, Screen Protector 3, iPad 1, FBM iPad 1.
+- Downloaded the 5 LUX print files to `LUX_2026-10-11/`. Batch 416718 (13 PM) was overdue and had been reprinted 3 times.
+
+**Portal** (`app/`, FastAPI, runs at `localhost:8765`, login `test` / `test123`)
+- **Input:** scan, paste a list, or upload CSV/XLSX with downloadable templates. Item barcodes resolve to their component. Rejected codes are listed with reasons.
+- **Lookup:** one bulk Pulse query. LUX/Mirror only, from `batch_imposition`. MT3 `fetch_url` only. Exact job, order and item statuses.
+- **Outputs per run:**
+  - **File PDF:** artwork only, original RGB pixels and ICC, no CMYK.
+  - **Die PDF:** 0.75 pt strokes plus model labels.
+  - **Spot PSD:** RGB layers plus the "Spot Color 1" channel.
+  - **Excel:** a Reconcile sheet (A/B/C) and a Pieces sheet.
+  - All of these come in a ZIP, and runs are kept in a history.
+- **Fixes after Rahul's reviews:**
+  1. Labels moved to the die only.
+  2. LUX and Mirror split into separate batches.
+  3. Reconcile sheet in the team's format.
+  4. UI: upload box fixed, History tab, last batch shown in green, colour-coded buttons.
+  5. **Full-bed bounding box:** an invisible 0%-opacity frame, the same as the team's Illustrator files.
+  6. **Right-aligned layout** (artwork not flipped).
+  7. **Spot output:** first a PDF Separation, which Photoshop flattens, so it became a **PSD**. Then the spot channel's **polarity was fixed**, since PSD spot data is inverted.
+- **Tested:** pixel-identical embedding; die boxes equal file size at 300 DPI; overflow onto sheet 2 (132 + 18 for 150 pieces); auth; bulk, CSV and XLSX imports; PSD validated with psd-tools; Rahul saw the Spot Color 1 channel in Photoshop.
+- **Latest test runs:** `data/runs/UV_LUX_20261011_18` (corrected spot) and `UV_MIRROR_20261011_01`.

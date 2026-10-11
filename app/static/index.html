@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UV Mix Batch</title>
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+          --ok:#047857; --okbg:#ecfdf5; --warn:#b45309; --warnbg:#fffbeb; --bad:#b91c1c; --badbg:#fef2f2;
+          --info:#1d4ed8; --infobg:#eff6ff; --accent:#111827; --lux:#7c3aed; --luxbg:#f5f3ff; --mir:#0e7490; --mirbg:#ecfeff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0; }
+  header .sp { flex:1; }
+  header a { color:var(--muted); text-decoration:none; font-size:13px; }
+  main { max-width:1400px; margin:0 auto; padding:20px 16px 60px; display:grid; gap:16px; grid-template-columns: minmax(0,1fr) 300px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .col { display:grid; gap:16px; align-content:start; min-width:0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0; }
+  .tabs { display:flex; gap:4px; margin-bottom:12px; border-bottom:1px solid var(--line); }
+  .tabs button { border:0; background:none; padding:8px 14px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tabs button.on { color:var(--ink); border-bottom-color:var(--ink); }
+  .pane { display:none; } .pane.on { display:block; }
+  .scan input { width:100%; font-size:20px; padding:12px 14px; border:2px solid var(--ink); border-radius:10px; letter-spacing:.04em; }
+  textarea { width:100%; min-height:130px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font:13px ui-monospace, Menlo, Consolas, monospace; resize:vertical; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .btn { padding:9px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; font-size:14px; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .btn.light { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  .hint { color:var(--muted); font-size:12px; }
+  .hint a { color:var(--info); }
+  .drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; width:100%;
+          min-height:130px; border:2px dashed #cbd5e1; border-radius:12px; padding:24px; text-align:center;
+          color:var(--muted); cursor:pointer; background:#fafafa; transition:background .15s, border-color .15s; }
+  .drop:hover { border-color:#94a3b8; background:#f8fafc; }
+  .drop.over { border-color:var(--info); background:var(--infobg); }
+  .drop .big { font-size:15px; font-weight:700; color:var(--ink); }
+  .drop .small { font-size:13px; }
+  .tpl { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; font-size:13px; color:var(--muted); }
+  .tpl b { color:var(--ink); }
+  .tpl .sp { flex:1; }
+  .tpl a { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid var(--line); border-radius:8px;
+           color:var(--ink); text-decoration:none; font-weight:600; background:#fff; }
+  .tpl a:hover { background:#f3f4f6; }
+  /* top-level views */
+  nav.views { display:flex; gap:4px; margin-left:12px; }
+  nav.views button { border:0; background:none; padding:7px 14px; border-radius:8px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; }
+  nav.views button.on { background:var(--ink); color:#fff; }
+  .view { display:none; } .view.on { display:grid; }
+  /* download buttons */
+  .dl { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .dl a { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-weight:700; font-size:13px;
+          text-decoration:none; color:#fff; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+  .dl a:hover { filter:brightness(1.1); }
+  .dl a.zip { background:#111827; } .dl a.print { background:#2563eb; } .dl a.die { background:#dc2626; } .dl a.spot { background:#7c3aed; } .dl a.xlsx { background:#15803d; }
+  .dl.sm a { padding:5px 10px; font-size:12px; }
+  .last { background:var(--okbg); border:1px solid #a7f3d0; }
+  .last .ttl { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ok); font-weight:700; }
+  .last .rid { font-size:16px; font-weight:800; margin:4px 0 2px; word-break:break-all; }
+  .last .sub { font-size:13px; color:#065f46; }
+  .htable td, .htable th { white-space:nowrap; }
+  #msg { min-height:22px; margin-top:10px; font-weight:600; }
+  #msg.bad { color:var(--bad); } #msg.ok { color:var(--ok); } #msg.warn { color:var(--warn); }
+  .report { margin-top:12px; border-radius:10px; padding:10px 12px; background:var(--badbg); display:none; }
+  .report b { color:var(--bad); }
+  .report ul { margin:6px 0 0; padding-left:18px; max-height:180px; overflow:auto; font-size:13px; }
+  .batch-h { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .batch-h h2 { margin:0; font-size:16px; }
+  .line { padding:3px 10px; border-radius:999px; font-weight:700; font-size:12px; }
+  .line.LUX { background:var(--luxbg); color:var(--lux); } .line.MIRROR { background:var(--mirbg); color:var(--mir); }
+  .batch-h .sp { flex:1; }
+  .meta { color:var(--muted); font-size:13px; }
+  .groups { font-size:12px; color:var(--muted); margin-top:6px; }
+  .tw { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap; }
+  th { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  td img { height:52px; border-radius:4px; border:1px solid var(--line); display:block; }
+  .lbl { font-weight:700; font-size:15px; }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; }
+  td small { color:var(--muted); }
+  .st { display:inline-block; font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; margin:1px 0; }
+  .st.good { background:var(--okbg); color:var(--ok); } .st.mid { background:var(--warnbg); color:var(--warn); }
+  .st.bad { background:var(--badbg); color:var(--bad); } .st.neutral { background:#f3f4f6; color:#374151; }
+  .stk { display:grid; gap:2px; }
+  .stk span.k { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-right:4px; }
+  tr.attn td { background:var(--warnbg); }
+  .x { border:0; background:none; color:var(--muted); cursor:pointer; font-size:18px; }
+  .result { margin-top:12px; padding:12px; border-radius:10px; background:var(--okbg); display:none; }
+  .err { margin-top:12px; padding:12px; border-radius:10px; background:var(--badbg); color:var(--bad); display:none; font-weight:600; }
+  .hist { font-size:13px; }
+  .hist div { padding:8px 0; border-bottom:1px solid var(--line); }
+  .hist a { color:var(--ink); margin-right:8px; font-size:12px; }
+  .hist small { color:var(--muted); display:block; }
+  .empty { color:var(--muted); text-align:center; padding:22px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>UV Mix Batch</h1>
+  <nav class="views">
+    <button data-view="build" class="on">Build batch</button>
+    <button data-view="history">History</button>
+  </nav>
+  <span class="sp"></span>
+  <span id="who" class="meta"></span>
+  <a href="/logout">Sign out</a>
+</header>
+<main class="view on" id="view-build">
+  <div class="col">
+    <section class="card">
+      <div class="tabs">
+        <button data-tab="scan" class="on">Scan</button>
+        <button data-tab="paste">Paste list</button>
+        <button data-tab="upload">Upload file</button>
+      </div>
+      <div class="pane on" id="pane-scan">
+        <div class="scan"><input id="scan" placeholder="Scan component barcode (B433…)" autocomplete="off" autofocus></div>
+      </div>
+      <div class="pane" id="pane-paste">
+        <textarea id="paste" placeholder="Paste barcodes, one per line (commas or spaces also work)"></textarea>
+        <div class="row"><button class="btn" id="pasteGo">Look up all</button><span class="hint" id="pasteCount"></span></div>
+      </div>
+      <div class="pane" id="pane-upload">
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept=".csv,.xlsx" hidden>
+          <span class="big">Drop a CSV or Excel file here</span>
+          <span class="small">or click to choose a file</span>
+        </label>
+        <div class="tpl">
+          <span>Use a column named <b>Component Barcode</b></span>
+          <span class="sp"></span>
+          <a href="/api/template.xlsx">⬇ Excel template</a>
+          <a href="/api/template.csv">⬇ CSV template</a>
+        </div>
+      </div>
+      <div id="msg"></div>
+      <div class="report" id="report"></div>
+    </section>
+
+    <div id="batches"></div>
+  </div>
+
+  <aside class="col">
+    <div class="card last" id="last"></div>
+  </aside>
+</main>
+
+<main class="view" id="view-history" style="grid-template-columns:1fr">
+  <section class="card">
+    <div class="batch-h">
+      <h2>Run history</h2>
+      <span class="sp"></span>
+      <select id="hFilter" class="btn light" style="padding:7px 10px">
+        <option value="">All lines</option><option value="LUX">LUX</option><option value="MIRROR">Mirror</option>
+      </select>
+      <input id="hSearch" placeholder="Search run ID or user" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px">
+    </div>
+    <div class="tw">
+      <table class="htable">
+        <thead><tr><th>Run</th><th>Line</th><th>Created</th><th>Pieces</th><th>Sheets</th><th>By</th><th>Downloads</th></tr></thead>
+        <tbody id="hist"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="histEmpty" style="display:none">No runs yet</div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY = 'uvmix.items.v2';
+const LINES = ['LUX', 'MIRROR'];
+const LINE_NAME = { LUX: 'LUX', MIRROR: 'Mirror' };
+let items = [];
+try { items = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { items = []; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {} };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const runResults = {};  // line -> last result html
+const sheetCounts = {};
+
+function beep(ok) {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain();
+    o.frequency.value = ok ? 880 : 220; o.connect(g); g.connect(a.destination); g.gain.value = 0.08;
+    o.start(); o.stop(a.currentTime + (ok ? 0.08 : 0.35));
+  } catch (e) {}
+}
+function msg(text, cls) { const m = $('msg'); m.textContent = text; m.className = cls || ''; }
+
+// Exact Pulse statuses, coloured by meaning.
+const TONE = {
+  job: { live: 'good', pending: 'mid', complete: 'mid', cancelled: 'bad', 'no job': 'bad' },
+  order: { printready: 'good', dataready: 'good', live: 'good', complete: 'neutral', shipped: 'neutral', cancelled: 'bad', error: 'bad' },
+  item: { live: 'good', shipped: 'neutral' },
+};
+const chip = (kind, v) => `<span class="st ${TONE[kind][v] || 'neutral'}">${esc(v || '—')}</span>`;
+// Reprints normally sit on orders already shipped/complete, so only flag a non-live job or a dead order.
+const needsAttention = it => it.job_status !== 'live' || ['cancelled', 'error'].includes(it.order_status);
+
+// ---- tabs ----
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
+  if (b.dataset.tab === 'scan') $('scan').focus();
+  if (b.dataset.tab === 'paste') $('paste').focus();
+}));
+
+// ---- adding items ----
+function addItems(list) {
+  const have = new Set(items.map(it => it.component_barcode));
+  const added = [], dupes = [];
+  for (const d of list) {
+    if (have.has(d.component_barcode)) { dupes.push({ barcode: d.component_barcode, error: `${d.component_barcode}: already in the list` }); continue; }
+    have.add(d.component_barcode); items.push(d); added.push(d);
+  }
+  save(); render();
+  return { added, dupes };
+}
+
+function showReport(errors) {
+  const r = $('report');
+  if (!errors.length) { r.style.display = 'none'; return; }
+  r.innerHTML = `<b>${errors.length} not added</b><ul>${errors.map(e => `<li class="mono">${esc(e.error)}</li>`).join('')}</ul>`;
+  r.style.display = 'block';
+}
+
+async function bulk(url, opts, label) {
+  msg(`Looking up ${label}…`); showReport([]);
+  try {
+    const r = await fetch(url, opts);
+    if (r.status === 401) { location.href = '/login'; return; }
+    const d = await r.json();
+    if (!r.ok) { msg(d.error || d.detail || 'Lookup failed', 'bad'); beep(false); return; }
+    const { added, dupes } = addItems(d.items);
+    const errors = d.errors.concat(dupes);
+    const attn = added.filter(needsAttention).length;
+    msg(`${added.length} added` + (errors.length ? ` · ${errors.length} not added` : '') + (attn ? ` · ${attn} need a status check` : ''),
+        errors.length || attn ? 'warn' : 'ok');
+    showReport(errors); beep(!errors.length);
+    return true;
+  } catch (err) { msg('Network error: ' + err, 'bad'); beep(false); }
+}
+
+let busy = false;
+$('scan').addEventListener('keydown', async e => {
+  if (e.key !== 'Enter') return;
+  const code = $('scan').value.trim().toUpperCase();
+  $('scan').value = '';
+  if (!code || busy) return;
+  if (items.some(it => it.component_barcode === code || it.item_barcode === code)) { msg(`${code}: already in the list`, 'bad'); beep(false); return; }
+  busy = true; msg(`Looking up ${code}…`); showReport([]);
+  try {
+    const r = await fetch('/api/item/' + encodeURIComponent(code));
+    if (r.status === 401) { location.href = '/login'; return; }
+    const d = await r.json();
+    if (!r.ok) { msg(d.error || 'Lookup failed', 'bad'); beep(false); return; }
+    addItems([d]);
+    if (needsAttention(d)) { msg(`${code}: added to ${LINE_NAME[d.line]} · job ${d.job_status}, order ${d.order_status}. Check before printing.`, 'warn'); beep(false); }
+    else { msg(`${code}: ${d.label} · ${d.print_code} added to ${LINE_NAME[d.line]}`, 'ok'); beep(true); }
+  } catch (err) { msg('Network error: ' + err, 'bad'); beep(false); }
+  finally { busy = false; $('scan').focus(); }
+});
+
+const countCodes = t => t.split(/[\s,;]+/).filter(Boolean).length;
+$('paste').addEventListener('input', () => { const n = countCodes($('paste').value); $('pasteCount').textContent = n ? `${n} barcode(s)` : ''; });
+$('pasteGo').addEventListener('click', async () => {
+  const text = $('paste').value; if (!countCodes(text)) return;
+  $('pasteGo').disabled = true;
+  const ok = await bulk('/api/items', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text }) }, `${countCodes(text)} barcodes`);
+  if (ok) { $('paste').value = ''; $('pasteCount').textContent = ''; }
+  $('pasteGo').disabled = false;
+});
+
+async function upload(file) {
+  if (!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  await bulk('/api/import', { method: 'POST', body: fd }, file.name);
+  $('file').value = '';
+}
+$('file').addEventListener('change', e => upload(e.target.files[0]));
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => upload(e.dataTransfer.files[0]));
+
+// ---- batches (one per line; never mixed) ----
+function render() {
+  const html = LINES.map(line => {
+    const list = items.filter(it => it.line === line);
+    if (!list.length && !runResults[line]) return '';
+    const counts = {};
+    list.forEach(it => counts[it.label] = (counts[it.label] || 0) + 1);
+    const attn = list.filter(needsAttention).length;
+    return `<section class="card" id="batch-${line}">
+      <div class="batch-h">
+        <span class="line ${line}">${LINE_NAME[line]}</span>
+        <h2>${list.length} piece(s)</h2>
+        <span class="meta" id="sheets-${line}">${list.length ? (sheetCounts[line] ? sheetCounts[line] + ' bed sheet(s)' : '…') : ''}</span>
+        ${attn ? `<span class="st mid">${attn} need a status check</span>` : ''}
+        <span class="sp"></span>
+        <button class="btn light" data-clear="${line}" ${list.length ? '' : 'disabled'}>Clear</button>
+        <button class="btn" data-gen="${line}" ${list.length ? '' : 'disabled'}>Generate ${LINE_NAME[line]} PDFs</button>
+      </div>
+      <div class="groups">${Object.entries(counts).map(([k, v]) => `${esc(k)} × ${v}`).join('   ·   ')}</div>
+      ${list.length ? `<div class="tw"><table>
+        <thead><tr><th>#</th><th></th><th>Model</th><th>Print code</th><th>Batch</th><th>Order</th><th>Component</th><th>Size mm</th><th>Status (Pulse)</th><th></th></tr></thead>
+        <tbody>${list.map((it, i) => `
+          <tr class="${needsAttention(it) ? 'attn' : ''}">
+            <td>${i + 1}</td>
+            <td><img loading="lazy" src="/api/thumb?url=${encodeURIComponent(it.fetch_url)}" alt=""></td>
+            <td><div class="lbl">${esc(it.label)}</div><small>${esc(it.model)}</small></td>
+            <td class="mono">${esc(it.print_code)}<br><small>${esc(it.print_sku)}</small></td>
+            <td class="mono">${esc(it.batch_number)}</td>
+            <td class="mono">${esc(it.order_number)}</td>
+            <td class="mono">${esc(it.component_barcode)}</td>
+            <td class="mono">${it.w_mm} × ${it.h_mm}</td>
+            <td><div class="stk">
+              <div><span class="k">Job</span>${chip('job', it.job_status)}${it.reprint ? ' <span class="st neutral">reprint</span>' : ''}</div>
+              <div><span class="k">Order</span>${chip('order', it.order_status)} <span class="k">Item</span>${chip('item', it.item_status)}</div>
+              ${it.reprint_reason ? `<small>Reason: ${esc(it.reprint_reason)}</small>` : ''}
+              ${it.status_updated ? `<small>Updated ${esc(it.status_updated)}</small>` : ''}
+            </div></td>
+            <td><button class="x" title="Remove" data-rm="${esc(it.component_barcode)}">×</button></td>
+          </tr>`).join('')}</tbody></table></div>` : ''}
+      <div class="result" style="${runResults[line] ? 'display:block' : ''}">${runResults[line] || ''}</div>
+      <div class="err" id="err-${line}"></div>
+    </section>`;
+  }).join('');
+  $('batches').innerHTML = html || '<section class="card"><div class="empty">Nothing added yet. Scan, paste or upload LUX / Mirror component barcodes. Each line gets its own batch.</div></section>';
+  LINES.forEach(updateSheets);
+}
+
+const sheetTimers = {};
+function updateSheets(line) {
+  clearTimeout(sheetTimers[line]);
+  const list = items.filter(it => it.line === line);
+  if (!list.length) return;
+  sheetTimers[line] = setTimeout(async () => {
+    const r = await fetch('/api/layout', { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ pieces: list.map(it => ({ label: it.label, w: it.w_pt, h: it.h_pt })) }) });
+    const d = await r.json();
+    if (sheetCounts[line] !== d.sheets) { sheetCounts[line] = d.sheets; const el = $('sheets-' + line); if (el) el.textContent = d.sheets + ' bed sheet(s)'; }
+  }, 150);
+}
+
+$('batches').addEventListener('click', async e => {
+  const rm = e.target.closest('[data-rm]'), cl = e.target.closest('[data-clear]'), gen = e.target.closest('[data-gen]');
+  if (rm) { items = items.filter(it => it.component_barcode !== rm.dataset.rm); save(); render(); }
+  if (cl) {
+    const line = cl.dataset.clear;
+    if (!confirm(`Clear all ${LINE_NAME[line]} pieces?`)) return;
+    items = items.filter(it => it.line !== line); delete runResults[line]; save(); render();
+  }
+  if (gen) {
+    const line = gen.dataset.gen;
+    gen.disabled = true; gen.textContent = 'Building PDFs…';
+    try {
+      const r = await fetch('/api/runs', { method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ barcodes: items.filter(it => it.line === line).map(it => it.component_barcode) }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Failed');
+      runResults[line] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${dlButtons(d.run_id)}`;
+      items = items.filter(it => it.line !== line); save(); render(); loadHistory();
+    } catch (err) {
+      const el = $('err-' + line); el.textContent = err.message; el.style.display = 'block';
+      gen.disabled = false; gen.textContent = `Generate ${LINE_NAME[line]} PDFs`;
+    }
+  }
+});
+
+function dlButtons(runId, small) {
+  const b = '/runs/' + encodeURIComponent(runId) + '/';
+  return `<div class="dl${small ? ' sm' : ''}">
+    <a class="zip" href="${b}zip">⬇ ZIP</a>
+    <a class="print" href="${b}file" target="_blank">File PDF</a>
+    <a class="die" href="${b}die" target="_blank">Die PDF</a>
+    <a class="spot" href="${b}spot" target="_blank">Spot PDF</a>
+    <a class="xlsx" href="${b}xlsx">Excel</a></div>`;
+}
+
+let allRuns = [];
+function renderHistory() {
+  const line = $('hFilter').value, q = $('hSearch').value.trim().toLowerCase();
+  const rows = allRuns.filter(m => (!line || m.line === line) &&
+    (!q || m.run_id.toLowerCase().includes(q) || (m.user || '').toLowerCase().includes(q)));
+  $('hist').innerHTML = rows.map(m => `<tr>
+      <td class="mono"><b>${esc(m.run_id)}</b></td>
+      <td><span class="line ${esc(m.line)}">${esc(LINE_NAME[m.line] || m.line)}</span></td>
+      <td>${esc(m.created.replace('T', ' '))}</td>
+      <td>${m.pieces}</td><td>${m.sheets}</td><td>${esc(m.user)}</td>
+      <td>${dlButtons(m.run_id, true)}</td></tr>`).join('');
+  $('histEmpty').style.display = rows.length ? 'none' : 'block';
+}
+$('hFilter').addEventListener('change', renderHistory);
+$('hSearch').addEventListener('input', renderHistory);
+
+async function loadHistory() {
+  const r = await fetch('/api/runs'); if (!r.ok) return;
+  allRuns = await r.json();
+  renderHistory();
+  const m = allRuns[0];
+  $('last').innerHTML = m ? `<div class="ttl">Last batch</div>
+      <div class="rid">${esc(m.run_id)}</div>
+      <div class="sub">${esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
+      ${dlButtons(m.run_id)}`
+    : '<div class="ttl">Last batch</div><div class="sub" style="margin-top:6px">No batches generated yet.</div>';
+}
+
+document.querySelectorAll('nav.views button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav.views button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + b.dataset.view));
+  if (b.dataset.view === 'history') loadHistory(); else if ($('pane-scan').classList.contains('on')) $('scan').focus();
+}));
+
+fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => { if (d) $('who').textContent = d.user; });
+document.addEventListener('click', e => {
+  if ($('view-build').classList.contains('on') && $('pane-scan').classList.contains('on') &&
+      !e.target.closest('input,button,a,textarea,label,table,select')) $('scan').focus();
+});
+render(); loadHistory();
+</script>
+</body>
+</html>

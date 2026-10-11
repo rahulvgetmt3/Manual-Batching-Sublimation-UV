@@ -1,0 +1,6 @@
+- [UV Mix portal overview](uv-mix-portal-overview.md) — what the portal does, current state (local only, print test pending), deploy blockers
+- [UV Mix team requirements](uv-mix-team-requirements.md) — confirmed rules: LUX/Mirror separate, labels die-only, full bed, right-aligned no flip, Reconcile sheet A/B/C
+- [Photoshop spot channel](photoshop-spot-channel-psd.md) — spot = artwork alpha; output is Photoshop-style PDF with private PieceInfo layer data; spot stored inverted (0 = ink)
+- [PDF full-bed bounding box](pdf-full-bed-bounding-box.md) — invisible 0%-opacity frame forces 2180×1220 in Photoshop
+- [Pulse lookup for UV mix](pulse-lookup-for-uv-mix.md) — barcode joins, status vocab, 403 files, DB access works on this Mac
+- [Rahul profile](rahul-profile.md) — MT3 print ops, non-developer, verifies visually in Photoshop/Illustrator
