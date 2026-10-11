@@ -36,6 +36,12 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-11 (later): Windows test package
+- For team testing only; the live version will be hosted, and the repo moved to the MT3 org afterwards.
+- Added `Setup.bat` and `Start UV Mix.bat` (both call `windows/*.ps1`), `windows/check_db.py` and [README-WINDOWS.md](README-WINDOWS.md). Each PC runs its own portal at http://localhost:8765.
+- Build the ZIP with `git archive --format=zip --prefix="UV Mix Batch/" -o dist/UV-Mix-Batch-Windows.zip HEAD app requirements.txt Setup.bat "Start UV Mix.bat" windows .env.example README-WINDOWS.md`.
+- **Not run on Windows yet** (there's no PowerShell on this Mac). Each PC's public IP needs the DB allowlist, and its `.env` holds the DB password, so use a read-only user.
+
 ### 2026-10-11 (later): Pushed to GitHub
 - Initialised git and pushed to `rahulvgetmt3/uv-mix-batch` (first commit `18162a3`). The commit identity is set for this repo only: `rahulvgetmt3 <rahulv@getmt3.com>`.
 - The repo was created under Rahul's personal account, not the MT3-Global-Tech-Inc org. Transfer it to the org later if the team needs access.
