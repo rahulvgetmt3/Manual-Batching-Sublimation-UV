@@ -34,7 +34,7 @@ def _users():
     for pair in os.environ.get("PORTAL_USERS", "").split(","):
         if ":" in pair:
             u, p = pair.split(":", 1)
-            out[u.strip().lower()] = p.strip()
+            out[u.strip().lower()] = (u.strip(), p.strip())  # login is case-insensitive; keep display name
     return out
 
 
@@ -62,11 +62,11 @@ def login_page():
 
 @app.post("/login")
 def login(username: str = Form(...), password: str = Form(...)):
-    expected = _users().get(username.strip().lower())
-    if not expected or not hmac.compare_digest(expected, password):
+    found = _users().get(username.strip().lower())
+    if not found or not hmac.compare_digest(found[1], password):
         return RedirectResponse("/login?error=1", status_code=303)
     resp = RedirectResponse("/", status_code=303)
-    resp.set_cookie(SESSION_COOKIE, _signer.dumps(username.strip().lower()), max_age=SESSION_MAX_AGE,
+    resp.set_cookie(SESSION_COOKIE, _signer.dumps(found[0]), max_age=SESSION_MAX_AGE,
                     httponly=True, samesite="lax", secure=os.environ.get("COOKIE_SECURE", "1") == "1")
     return resp
 

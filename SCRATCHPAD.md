@@ -83,7 +83,7 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 - Current Work matched SiteFlow live batches: Essential 4, Bold 7 (screen showed 2 mid-close), Classic 16, Lux 5, Screen Protector 3, iPad 1, FBM iPad 1.
 - Downloaded the 5 LUX print files to `LUX_2026-10-11/`. Batch 416718 (13 PM) was overdue and had been reprinted 3 times.
 
-**Portal** (`app/`, FastAPI, runs at `localhost:8765`, login `test` / `test123`)
+**Portal** (`app/`, FastAPI, runs at `localhost:8765`, login `Rahul` / `test123`)
 - **Input:** scan, paste a list, or upload CSV/XLSX with downloadable templates. Item barcodes resolve to their component. Rejected codes are listed with reasons.
 - **Lookup:** one bulk Pulse query. LUX/Mirror only, from `batch_imposition`. MT3 `fetch_url` only. Exact job, order and item statuses.
 - **Outputs per run:**
