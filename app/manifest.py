@@ -20,7 +20,9 @@ def _reconcile_sheet(ws, placements, items):
     ws.title = "Reconcile"
     ws.append(["Reconcile", "Model", "Qty."])
     # Model as the team tracks it: line + die label, e.g. "LUX-15-PL", "MIRROR-17-PM"
-    counts = Counter((items[p.index].batch_number, f"{items[p.index].line}-{items[p.index].label}") for p in placements)
+    counts = Counter((items[p.index].batch_number,
+                      items[p.index].reconcile_model or f"{items[p.index].line}-{items[p.index].label}")
+                     for p in placements)
     for (batch, model), qty in sorted(counts.items(), key=lambda kv: (kv[0][0], kv[0][1])):
         ws.append([int(batch) if batch.isdigit() else batch, model, qty])
     for row in ws.iter_rows():

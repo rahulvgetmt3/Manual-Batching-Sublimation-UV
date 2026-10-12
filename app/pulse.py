@@ -52,6 +52,8 @@ class Item:
     status_updated: str
     line: str
     label: str
+    reconcile_model: str = ""
+    family: str = ""
 
     def to_dict(self):
         return asdict(self)
@@ -78,16 +80,53 @@ def line_and_label(batch_imposition):
     return line, re.sub(r"_AMZ-FBM$", "", rest, flags=re.I)
 
 
+def sub_template(batch_imposition):
+    """Sublimation items are the 6UP impositions ('Casely6up_Bold', 'Casely-Bold-6up-Extended',
+    '6up_Sublimation', ...). Suggested template: 6UP Extended if the name says Extended, else 6UP."""
+    imp = (batch_imposition or "").lower()
+    if "6up" not in imp:
+        return None
+    return "6UP-EXT" if "extended" in imp else "6UP"
+
+
+def sub_family(case_type, sku=""):
+    """Bold and Classic print on separate sheets. Family comes from the case type
+    ('BOLD FLEX - BLACK BUMPER', 'BOLD - BLACK' = Bold; 'CLAS-BK', 'CLAS-CL' = Classic), with the SKU
+    as a fallback (CS-BL- = Bold, CS-CL-/AM-CL- = Classic). Imposition names mix them, so they are not used."""
+    ct = (case_type or "").upper()
+    if "BOLD" in ct:
+        return "BOLD"
+    if "CLAS" in ct:
+        return "CLASSIC"
+    s = f"-{(sku or '').upper()}-"
+    if "-BL-" in s:
+        return "BOLD"
+    if "-CL-" in s:
+        return "CLASSIC"
+    return "OTHER"
+
+
 def normalise(codes):
     """Uppercase, strip, de-duplicate (keeping order)."""
     return list(dict.fromkeys(c.strip().upper() for c in codes if c and c.strip()))
 
 
-def _to_item(row):
-    line, label = line_and_label(row["batch_imposition"])
+def _to_item(row, process="uv"):
     code = row["component_barcode"]
-    if not line:
-        raise LookupError_(f"{code}: {row['batch_imposition'] or row['sku']} is not LUX or Mirror")
+    if process == "sub":
+        line = sub_template(row["batch_imposition"])
+        if not line:
+            raise LookupError_(f"{code}: {row['batch_imposition'] or row['sku']} is not a Sublimation (6UP) item")
+        # side name on the sheet: OrderID-Model-CaseType, e.g. "#4848818-iPhone 17 Pro-BOLD FLEX - BLACK BUMPER"
+        label = f"{row['order_number'] or ''}-{row['model'] or ''}-{row['case_type'] or ''}"
+        reconcile = row["model"] or ""
+        family = sub_family(row["case_type"], row["sku"])
+    else:
+        line, label = line_and_label(row["batch_imposition"])
+        if not line:
+            raise LookupError_(f"{code}: {row['batch_imposition'] or row['sku']} is not LUX or Mirror")
+        reconcile = f"{line}-{label}"
+        family = line
     if not row["fetch_url"]:
         raise LookupError_(f"{code}: no MT3 print file (fetch_url) in Pulse")
     return Item(
@@ -112,11 +151,13 @@ def _to_item(row):
         status_updated=row["status_updated"].strftime("%Y-%m-%d %H:%M") if row["status_updated"] else "",
         line=line,
         label=label,
+        reconcile_model=reconcile,
+        family=family,
     )
 
 
-def lookup_many(codes):
-    """Look up component or item barcodes in one pass.
+def lookup_many(codes, process="uv"):
+    """Look up component or item barcodes in one pass. process: 'uv' (LUX/Mirror) or 'sub' (6UP).
 
     Returns (items, errors): items keyed by the code as given, errors as {code: message}.
     """
@@ -152,14 +193,14 @@ def lookup_many(codes):
             errors[c] = f"{c}: not found in Pulse"
             continue
         try:
-            items[c] = _to_item(r)
+            items[c] = _to_item(r, process)
         except LookupError_ as e:
             errors[c] = str(e)
     return items, errors
 
 
-def lookup_component(barcode):
-    items, errors = lookup_many([barcode])
+def lookup_component(barcode, process="uv"):
+    items, errors = lookup_many([barcode], process)
     code = normalise([barcode])[0] if barcode.strip() else ""
     if code in items:
         return items[code]

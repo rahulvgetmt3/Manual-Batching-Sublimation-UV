@@ -10,11 +10,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .fetch import cached_file, image_info
-from .layout import layout
+from .layout import Placement, layout
 from .manifest import write_manifest
 from .pdf_build import build_pdfs
 from .spot_pdf import build_spot_pdf
 from .pulse import lookup_many, normalise
+from .sub_build import SLOTS_PER_SHEET, TEMPLATES, build_sheet, image_mode
 
 RUNS_DIR = Path(os.environ.get("RUNS_DIR", Path(__file__).resolve().parent.parent / "data" / "runs"))
 
@@ -23,13 +24,16 @@ def _safe(s):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
 
 
-def _claim_run_dir(line):
-    """Create the next free UV_<line>_<date>_NN folder; mkdir is atomic, so parallel runs never collide."""
+RUN_ID_RE = re.compile(r"(UV_[A-Z]+|SUB_(BOLD|CLASSIC|OTHER)_6UP(-EXT)?_(RGB|CMYK))_\d{8}_\d+")
+
+
+def _claim_run_dir(line, prefix="UV"):
+    """Create the next free <prefix>_<line>_<date>_NN folder; mkdir is atomic, so parallel runs never collide."""
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = dt.datetime.now().strftime("%Y%m%d")
-    n = 1 + sum(1 for p in RUNS_DIR.glob(f"UV_{line}_{stamp}_*") if p.is_dir())
+    n = 1 + sum(1 for p in RUNS_DIR.glob(f"{prefix}_{line}_{stamp}_*") if p.is_dir())
     while True:
-        run_id = f"UV_{line}_{stamp}_{n:02d}"
+        run_id = f"{prefix}_{line}_{stamp}_{n:02d}"
         try:
             (RUNS_DIR / run_id).mkdir()
             return run_id
@@ -88,6 +92,7 @@ def create_run(barcodes, user=""):
     sheets = max(p.sheet for p in placements)
     meta = {
         "run_id": run_id,
+        "process": "uv",
         "line": line,
         "created": dt.datetime.now().isoformat(timespec="seconds"),
         "user": user,
@@ -106,6 +111,91 @@ def create_run(barcodes, user=""):
     return meta
 
 
+def _download_all(items):
+    def _get(it):
+        try:
+            return cached_file(it.fetch_url)
+        except Exception as e:  # noqa: BLE001 - reported per barcode
+            raise ValueError(f"{it.component_barcode}: could not download print file ({e})") from e
+
+    with ThreadPoolExecutor(8) as ex:
+        return list(ex.map(_get, items))
+
+
+def create_sub_run(barcodes, template, color, user="", mirror=True):
+    """Sublimation: one PDF per 6-up sheet in the chosen template, artwork mirrored and centred,
+    names beside each piece, artwork exported as RGB or CMYK."""
+    if template not in TEMPLATES:
+        raise ValueError(f"Unknown template {template!r}")
+    color = (color or "RGB").upper()
+    if color not in ("RGB", "CMYK"):
+        raise ValueError("Colour must be RGB or CMYK")
+    barcodes = normalise(barcodes)
+    if not barcodes:
+        raise ValueError("No barcodes scanned")
+    found, errors = lookup_many(barcodes, process="sub")
+    if errors:
+        raise ValueError("; ".join(errors.values()))
+    items = [found[b] for b in barcodes]
+    families = {it.family for it in items}
+    if len(families) > 1:
+        raise ValueError("Bold and Classic print on separate sheets; generate them as separate batches")
+    family = families.pop()
+    paths = _download_all(items)
+
+    pieces, placements = [], []
+    for i, (it, path) in enumerate(zip(items, paths)):
+        info = image_info(path)
+        pieces.append({"path": path, "w_pt": info["w_pt"], "h_pt": info["h_pt"], "name": it.label,
+                       "src_mode": image_mode(path)})
+        placements.append(Placement(index=i, sheet=i // SLOTS_PER_SHEET + 1, position=i % SLOTS_PER_SHEET + 1,
+                                    x=0, y=0, w=info["w_pt"], h=info["h_pt"]))
+
+    run_id = _claim_run_dir(f"{family}_{template}_{color}", prefix="SUB")
+    out = RUNS_DIR / run_id
+    (out / "files").mkdir()
+    sheets = (len(pieces) + SLOTS_PER_SHEET - 1) // SLOTS_PER_SHEET
+    sheet_pdfs, warnings = [], []
+    for s in range(sheets):
+        chunk = pieces[s * SLOTS_PER_SHEET:(s + 1) * SLOTS_PER_SHEET]
+        pdf_path = out / f"{run_id}_S{s + 1}.pdf"
+        for w in build_sheet(template, color, chunk, pdf_path, pdf_path.stem, mirror=mirror):
+            warnings.append(f"sheet {s + 1} {w}")
+        sheet_pdfs.append(pdf_path)
+    xlsx = out / f"{run_id}_manifest.xlsx"
+    write_manifest(placements, items, xlsx, run_id)
+
+    for p in placements:
+        it, src = items[p.index], pieces[p.index]["path"]
+        name = f"S{p.sheet}-{p.position}_{it.batch_number}_{_safe(it.print_code)}_{it.component_barcode}{src.suffix}"
+        shutil.copyfile(src, out / "files" / name)
+
+    converted = sum(1 for pc in pieces if pc["src_mode"] != color)
+    meta = {
+        "run_id": run_id,
+        "process": "sub",
+        "line": template,
+        "family": family,
+        "template": template,
+        "color": color,
+        "mirror": bool(mirror),
+        "created": dt.datetime.now().isoformat(timespec="seconds"),
+        "user": user,
+        "pieces": len(items),
+        "sheets": sheets,
+        "converted": converted,
+        "warnings": warnings,
+        "barcodes": barcodes,
+    }
+    (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    with zipfile.ZipFile(out / f"{run_id}.zip", "w", zipfile.ZIP_DEFLATED) as z:
+        for f in (*sheet_pdfs, xlsx):
+            z.write(f, f.name)
+        for f in sorted((out / "files").iterdir()):
+            z.write(f, f"files/{f.name}")
+    return meta
+
+
 def list_runs(limit=100):
     if not RUNS_DIR.exists():
         return []
@@ -118,9 +208,11 @@ def list_runs(limit=100):
 
 
 def run_file(run_id, kind):
-    if not re.fullmatch(r"UV_[A-Z]+_\d{8}_\d+", run_id):
+    if not RUN_ID_RE.fullmatch(run_id):
         return None
     out = RUNS_DIR / run_id
+    if run_id.startswith("SUB_") and kind == "file":
+        return _sheets_download(out, run_id)
     if kind == "spot":
         return _spot_download(out, run_id)
     name = {"zip": f"{run_id}.zip", "file": f"{run_id}_FILE.pdf",
@@ -138,5 +230,18 @@ def _spot_download(out, run_id):
     if not z.exists():
         with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
             for f in psds:
+                zf.write(f, f.name)
+    return z
+
+
+def _sheets_download(out, run_id):
+    """Sublimation sheet PDF; for a multi-sheet run, one ZIP holding every sheet's PDF."""
+    pdfs = sorted(out.glob(f"{run_id}_S*.pdf"), key=lambda p: int(p.stem.rsplit("_S", 1)[1]))
+    if len(pdfs) <= 1:
+        return pdfs[0] if pdfs else None
+    z = out / f"{run_id}_SHEETS.zip"
+    if not z.exists():
+        with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f in pdfs:
                 zf.write(f, f.name)
     return z

@@ -17,7 +17,8 @@ from .fetch import cached_file, cached_path, image_info
 from .importer import parse_text, parse_upload, template_csv, template_xlsx
 from .layout import MM, layout
 from .pulse import LookupError_, lookup_many, normalise
-from .runs import create_run, list_runs, run_file
+from .runs import create_run, create_sub_run, list_runs, run_file
+from .sub_build import TEMPLATES as SUB_TEMPLATES
 
 MAX_BULK = 2000
 
@@ -92,7 +93,12 @@ def me(request: Request):
     return {"user": _require_user(request)}
 
 
-def _resolve(codes):
+def _process(p):
+    """'uv' (LUX & Mirror) or 'sub' (Sublimation 6UP)."""
+    return "sub" if (p or "").lower() == "sub" else "uv"
+
+
+def _resolve(codes, process="uv"):
     """Look up barcodes and download their print files.
 
     Returns {"items": [...], "errors": [{"barcode", "error"}]} in the order given.
@@ -100,7 +106,7 @@ def _resolve(codes):
     codes = normalise(codes)
     if len(codes) > MAX_BULK:
         raise HTTPException(422, f"Too many barcodes ({len(codes)}); max {MAX_BULK} per lookup")
-    items, errors = lookup_many(codes)
+    items, errors = lookup_many(codes, process)
 
     def _with_size(code):
         it = items[code]
@@ -133,9 +139,9 @@ def _resolve(codes):
 
 
 @app.get("/api/item/{barcode}")
-def item(barcode: str, request: Request):
+def item(barcode: str, request: Request, process: str = "uv"):
     _require_user(request)
-    res = _resolve([barcode])
+    res = _resolve([barcode], _process(process))
     if res["errors"]:
         return JSONResponse({"error": res["errors"][0]["error"]}, status_code=422)
     return res["items"][0]
@@ -146,14 +152,14 @@ class BulkReq(BaseModel):
 
 
 @app.post("/api/items")
-def bulk_items(req: BulkReq, request: Request):
+def bulk_items(req: BulkReq, request: Request, process: str = "uv"):
     """Bulk search: pasted barcodes separated by newlines, commas or spaces."""
     _require_user(request)
-    return _resolve(parse_text(req.text))
+    return _resolve(parse_text(req.text), _process(process))
 
 
 @app.post("/api/import")
-async def import_file(request: Request, file: UploadFile = File(...)):
+async def import_file(request: Request, file: UploadFile = File(...), process: str = "uv"):
     _require_user(request)
     data = await file.read()
     if len(data) > 10 * 1024 * 1024:
@@ -164,7 +170,7 @@ async def import_file(request: Request, file: UploadFile = File(...)):
         return JSONResponse({"error": f"Could not read {file.filename}: {e}"}, status_code=422)
     if not codes:
         return JSONResponse({"error": f"No barcodes found in {file.filename}"}, status_code=422)
-    return await run_in_threadpool(_resolve, codes)
+    return await run_in_threadpool(_resolve, codes, _process(process))
 
 
 @app.get("/api/template.{fmt}")
@@ -199,12 +205,18 @@ def preview_layout(req: LayoutReq, request: Request):
 
 class RunReq(BaseModel):
     barcodes: list
+    process: str = "uv"
+    template: str = ""     # sublimation: 6UP / 6UP-EXT
+    color: str = "RGB"     # sublimation: RGB / CMYK
+    mirror: bool = True    # sublimation: flip artwork (default on)
 
 
 @app.post("/api/runs")
 def new_run(req: RunReq, request: Request):
     user = _require_user(request)
     try:
+        if _process(req.process) == "sub":
+            return create_sub_run([str(b) for b in req.barcodes], req.template, req.color, user=user, mirror=req.mirror)
         return create_run([str(b) for b in req.barcodes], user=user)
     except (LookupError_, ValueError) as e:
         return JSONResponse({"error": str(e)}, status_code=422)
@@ -240,6 +252,13 @@ def thumb(url: str, request: Request):
             bg.paste(im.convert("RGBA"), mask=im.convert("RGBA").getchannel("A"))
             bg.save(t, "JPEG", quality=80)
     return FileResponse(t, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+
+@app.get("/api/sub/templates")
+def sub_templates(request: Request):
+    _require_user(request)
+    return {k: {"title": v["title"], "page_mm": [round(x / 72 * 25.4, 1) for x in v["page"]],
+                "slot_mm": [round(x / 72 * 25.4, 1) for x in v["slots"][0][2:]]} for k, v in SUB_TEMPLATES.items()}
 
 
 @app.get("/healthz")

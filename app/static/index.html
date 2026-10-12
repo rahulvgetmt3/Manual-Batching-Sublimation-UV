@@ -89,8 +89,21 @@
   .nordic-table-container { margin-top:12px; }
   .nordic-table { margin-top:0; }
   tr.attn td { background:#fffbeb; }
-  #batch-LUX { border-left:4px solid var(--secondary); }
-  #batch-MIRROR { border-left:4px solid var(--info-light); border-left-color:var(--color-info); }
+  .grp-LUX { border-left:4px solid var(--secondary); }
+  .grp-MIRROR { border-left:4px solid var(--color-info); }
+  .grp-BOLD { border-left:4px solid var(--color-primary); }
+  .grp-CLASSIC { border-left:4px solid var(--success); }
+  .grp-OTHER { border-left:4px solid var(--warning); }
+  .subopts { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:12px; padding:10px 12px;
+             background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; }
+  .subopts label { font-size:12px; font-weight:600; color:var(--gray-600); display:flex; align-items:center; gap:6px; }
+  .subopts select { height:32px; }
+  .toggle { position:relative; width:38px; height:22px; flex:none; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .toggle span { position:absolute; inset:0; background:var(--gray-300); border-radius:999px; transition:.15s; cursor:pointer; }
+  .toggle span:before { content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .toggle input:checked + span { background:var(--color-primary); }
+  .toggle input:checked + span:before { transform:translateX(16px); }
   .last { cursor:default; }
   .last:hover { transform:none; box-shadow:none; }
   .last .cd-kpi-value { font-size:18px; margin-top:4px; white-space:normal; word-break:break-all; }
@@ -125,14 +138,15 @@
             <li class="top-nav__section">
               <div class="top-nav__section-label">UV Mix · LUX &amp; Mirror</div>
               <ul class="top-nav__section-items">
-                <li><a class="top-nav__dropdown-link top-nav__dropdown-link--active" data-view="build">Build batch</a></li>
-                <li><a class="top-nav__dropdown-link" data-view="history">History</a></li>
+                <li><a class="top-nav__dropdown-link top-nav__dropdown-link--active" data-proc="uv" data-view="build">Build batch</a></li>
+                <li><a class="top-nav__dropdown-link" data-proc="uv" data-view="history">History</a></li>
               </ul>
             </li>
             <li class="top-nav__section">
-              <div class="top-nav__section-label">Sublimation</div>
+              <div class="top-nav__section-label">Sublimation · 6UP</div>
               <ul class="top-nav__section-items">
-                <li><a class="top-nav__dropdown-link is-disabled">Coming soon</a></li>
+                <li><a class="top-nav__dropdown-link" data-proc="sub" data-view="build">Build batch</a></li>
+                <li><a class="top-nav__dropdown-link" data-proc="sub" data-view="history">History</a></li>
               </ul>
             </li>
           </ul>
@@ -210,7 +224,7 @@
       <h2>Run history</h2>
       <span class="sp"></span>
       <select id="hFilter" class="pulse-input">
-        <option value="">All lines</option><option value="LUX">LUX</option><option value="MIRROR">Mirror</option>
+        <option value="">All</option>
       </select>
       <input id="hSearch" class="pulse-input" style="font-weight:400" placeholder="Search run ID or user">
     </div>
@@ -226,15 +240,33 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const KEY = 'uvmix.items.v2';
-const LINES = ['LUX', 'MIRROR'];
-const LINE_NAME = { LUX: 'LUX', MIRROR: 'Mirror' };
-let items = [];
-try { items = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { items = []; }
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {} };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const runResults = {};  // line -> last result html
+
+// ---- two processes on one page: UV mix (LUX & Mirror) and Sublimation (6UP) ----
+const PROC = {
+  uv: { key: 'uvmix.items.v2', name: 'UV Mix', unit: 'bed sheet(s)',
+        hint: 'Nothing added yet. Scan, paste or upload LUX / Mirror component barcodes. Each line gets its own batch.' },
+  sub: { key: 'submix.items.v1', name: 'Sublimation', unit: 'sheet(s)',
+        hint: 'Nothing added yet. Scan, paste or upload 6UP (Bold / Classic) component barcodes. Bold and Classic get separate batches.' },
+};
+const TPL_NAME = { '6UP': '6UP', '6UP-EXT': '6UP Extended' };
+const FAMILY_NAME = { BOLD: 'Bold', CLASSIC: 'Classic', OTHER: 'Other' };
+const LINE_NAME = { LUX: 'LUX', MIRROR: 'Mirror', ...TPL_NAME };
+let proc = 'uv';
+const store = {};
+function load(p) { try { return JSON.parse(localStorage.getItem(PROC[p].key) || '[]'); } catch (e) { return []; } }
+store.uv = load('uv'); store.sub = load('sub');
+let items = store[proc];
+const save = () => { try { localStorage.setItem(PROC[proc].key, JSON.stringify(items)); } catch (e) {} };
+const runResults = { uv: {}, sub: {} };
 const sheetCounts = {};
+const subOpts = {};  // group -> {template, color, mirror}
+
+// group key: UV by line (LUX/MIRROR); Sublimation by family + suggested template (Bold|6UP ...)
+const groupOf = it => proc === 'uv' ? it.line : `${it.family || 'OTHER'}|${it.line}`;
+const groupTitle = g => proc === 'uv' ? (LINE_NAME[g] || g) : `${FAMILY_NAME[g.split('|')[0]] || g} · ${TPL_NAME[g.split('|')[1]] || ''}`;
+const groupClass = g => 'grp-' + (proc === 'uv' ? g : g.split('|')[0]);
+const ORDER = { uv: ['LUX', 'MIRROR'], sub: ['BOLD|6UP', 'BOLD|6UP-EXT', 'CLASSIC|6UP', 'CLASSIC|6UP-EXT', 'OTHER|6UP', 'OTHER|6UP-EXT'] };
 
 function beep(ok) {
   try {
@@ -253,9 +285,12 @@ const TONE = {
 };
 const BADGE = { good: 'cd-badge-success', mid: 'cd-badge-warning', bad: 'cd-badge-error', neutral: 'cd-badge-gray' };
 const chip = (kind, v) => `<span class="cd-badge ${BADGE[TONE[kind][v] || 'neutral']}">${esc(v || '—')}</span>`;
-const lineBadge = line => `<span class="cd-badge ${line === 'LUX' ? 'cd-badge-purple' : 'cd-badge-info'}">${esc(LINE_NAME[line] || line)}</span>`;
+const LINE_BADGE = { LUX: 'cd-badge-purple', MIRROR: 'cd-badge-info', '6UP': 'cd-badge-cyan', '6UP-EXT': 'cd-badge-cyan' };
+const lineBadge = line => `<span class="cd-badge ${LINE_BADGE[line] || 'cd-badge-gray'}">${esc(LINE_NAME[line] || line)}</span>`;
+const famBadge = f => f ? `<span class="cd-badge ${f === 'BOLD' ? 'cd-badge-purple' : f === 'CLASSIC' ? 'cd-badge-success' : 'cd-badge-gray'}">${esc(FAMILY_NAME[f] || f)}</span>` : '';
 // Reprints normally sit on orders already shipped/complete, so only flag a non-live job or a dead order.
 const needsAttention = it => it.job_status !== 'live' || ['cancelled', 'error'].includes(it.order_status);
+const q = () => `process=${proc}`;
 
 // ---- tabs ----
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
@@ -310,13 +345,14 @@ $('scan').addEventListener('keydown', async e => {
   if (items.some(it => it.component_barcode === code || it.item_barcode === code)) { msg(`${code}: already in the list`, 'bad'); beep(false); return; }
   busy = true; msg(`Looking up ${code}…`); showReport([]);
   try {
-    const r = await fetch('/api/item/' + encodeURIComponent(code));
+    const r = await fetch('/api/item/' + encodeURIComponent(code) + '?' + q());
     if (r.status === 401) { location.href = '/login'; return; }
     const d = await r.json();
     if (!r.ok) { msg(d.error || 'Lookup failed', 'bad'); beep(false); return; }
     addItems([d]);
-    if (needsAttention(d)) { msg(`${code}: added to ${LINE_NAME[d.line]} · job ${d.job_status}, order ${d.order_status}. Check before printing.`, 'warn'); beep(false); }
-    else { msg(`${code}: ${d.label} · ${d.print_code} added to ${LINE_NAME[d.line]}`, 'ok'); beep(true); }
+    const where = groupTitle(groupOf(d));
+    if (needsAttention(d)) { msg(`${code}: added to ${where} · job ${d.job_status}, order ${d.order_status}. Check before printing.`, 'warn'); beep(false); }
+    else { msg(`${code}: ${d.label} · ${d.print_code} added to ${where}`, 'ok'); beep(true); }
   } catch (err) { msg('Network error: ' + err, 'bad'); beep(false); }
   finally { busy = false; $('scan').focus(); }
 });
@@ -326,7 +362,7 @@ $('paste').addEventListener('input', () => { const n = countCodes($('paste').val
 $('pasteGo').addEventListener('click', async () => {
   const text = $('paste').value; if (!countCodes(text)) return;
   $('pasteGo').disabled = true;
-  const ok = await bulk('/api/items', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text }) }, `${countCodes(text)} barcodes`);
+  const ok = await bulk('/api/items?' + q(), { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text }) }, `${countCodes(text)} barcodes`);
   if (ok) { $('paste').value = ''; $('pasteCount').textContent = ''; }
   $('pasteGo').disabled = false;
 });
@@ -334,7 +370,7 @@ $('pasteGo').addEventListener('click', async () => {
 async function upload(file) {
   if (!file) return;
   const fd = new FormData(); fd.append('file', file);
-  await bulk('/api/import', { method: 'POST', body: fd }, file.name);
+  await bulk('/api/import?' + q(), { method: 'POST', body: fd }, file.name);
   $('file').value = '';
 }
 $('file').addEventListener('change', e => upload(e.target.files[0]));
@@ -343,32 +379,62 @@ const drop = $('drop');
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => upload(e.dataTransfer.files[0]));
 
-// ---- batches (one per line; never mixed) ----
+// ---- batches (one per group; never mixed) ----
+const gid = g => g.replace(/[^A-Za-z0-9]/g, '_');
+function groups() {
+  const present = [...new Set(items.map(groupOf))];
+  const res = Object.keys(runResults[proc]);
+  const all = [...new Set([...ORDER[proc], ...present, ...res])];
+  return all.filter(g => present.includes(g) || runResults[proc][g]);
+}
+function optsFor(g) {
+  if (!subOpts[g]) subOpts[g] = { template: g.split('|')[1] || '6UP', color: 'RGB', mirror: true };
+  return subOpts[g];
+}
+function subControls(g) {
+  const o = optsFor(g);
+  return `<div class="subopts">
+    <label>Template
+      <select class="pulse-input" data-opt="template" data-g="${esc(g)}">
+        ${Object.entries(TPL_NAME).map(([k, v]) => `<option value="${k}" ${o.template === k ? 'selected' : ''}>${v}</option>`).join('')}
+      </select></label>
+    <label>Export
+      <select class="pulse-input" data-opt="color" data-g="${esc(g)}">
+        <option value="RGB" ${o.color === 'RGB' ? 'selected' : ''}>RGB PDF</option>
+        <option value="CMYK" ${o.color === 'CMYK' ? 'selected' : ''}>CMYK PDF</option>
+      </select></label>
+    <label>Flip artwork
+      <span class="toggle"><input type="checkbox" data-opt="mirror" data-g="${esc(g)}" ${o.mirror ? 'checked' : ''}><span></span></span>
+      <span class="meta">${o.mirror ? 'mirrored (default)' : 'not mirrored'}</span></label>
+  </div>`;
+}
 function render() {
-  const html = LINES.map(line => {
-    const list = items.filter(it => it.line === line);
-    if (!list.length && !runResults[line]) return '';
+  const html = groups().map(g => {
+    const list = items.filter(it => groupOf(it) === g);
     const counts = {};
-    list.forEach(it => counts[it.label] = (counts[it.label] || 0) + 1);
+    list.forEach(it => { const k = proc === 'uv' ? it.label : it.model; counts[k] = (counts[k] || 0) + 1; });
     const attn = list.filter(needsAttention).length;
-    return `<section class="card" id="batch-${line}">
+    const id = gid(g);
+    const sheets = proc === 'sub' ? Math.ceil(list.length / 6) : sheetCounts[g];
+    return `<section class="card ${groupClass(g)}" id="batch-${id}">
       <div class="batch-h">
-        ${lineBadge(line)}
+        ${proc === 'uv' ? lineBadge(g) : famBadge(g.split('|')[0]) + ' ' + lineBadge(g.split('|')[1])}
         <h2>${list.length} piece(s)</h2>
-        <span class="meta" id="sheets-${line}">${list.length ? (sheetCounts[line] ? sheetCounts[line] + ' bed sheet(s)' : '…') : ''}</span>
+        <span class="meta" id="sheets-${id}">${list.length ? (sheets ? sheets + ' ' + PROC[proc].unit : '…') : ''}</span>
         ${attn ? `<span class="cd-badge cd-badge-warning">${attn} need a status check</span>` : ''}
         <span class="sp"></span>
-        <button class="cd-btn cd-btn-secondary" data-clear="${line}" ${list.length ? '' : 'disabled'}>Clear</button>
-        <button class="cd-btn cd-btn-primary" data-gen="${line}" ${list.length ? '' : 'disabled'}>Generate ${LINE_NAME[line]} PDFs</button>
+        <button class="cd-btn cd-btn-secondary" data-clear="${esc(g)}" ${list.length ? '' : 'disabled'}>Clear</button>
+        <button class="cd-btn cd-btn-primary" data-gen="${esc(g)}" ${list.length ? '' : 'disabled'}>Generate ${esc(groupTitle(g))} PDF${proc === 'sub' ? '(s)' : 's'}</button>
       </div>
+      ${proc === 'sub' && list.length ? subControls(g) : ''}
       <div class="groups">${Object.entries(counts).map(([k, v]) => `${esc(k)} × ${v}`).join('   ·   ')}</div>
       ${list.length ? `<div class="tw nordic-table-container"><table class="nordic-table">
-        <thead><tr><th>#</th><th></th><th>Model</th><th>Print code</th><th>Batch</th><th>Order</th><th>Component</th><th>Size mm</th><th>Status (Pulse)</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th></th><th>${proc === 'uv' ? 'Model' : 'Name on sheet'}</th><th>Print code</th><th>Batch</th><th>Order</th><th>Component</th><th>Size mm</th><th>Status (Pulse)</th><th></th></tr></thead>
         <tbody>${list.map((it, i) => `
           <tr class="${needsAttention(it) ? 'attn' : ''}">
-            <td>${i + 1}</td>
+            <td>${proc === 'sub' ? `S${Math.floor(i / 6) + 1}-${i % 6 + 1}` : i + 1}</td>
             <td><img loading="lazy" src="/api/thumb?url=${encodeURIComponent(it.fetch_url)}" alt=""></td>
-            <td><div class="lbl">${esc(it.label)}</div><small>${esc(it.model)}</small></td>
+            <td><div class="lbl" ${proc === 'sub' ? 'style="font-size:13px"' : ''}>${esc(it.label)}</div><small>${esc(proc === 'uv' ? it.model : it.batch_imposition)}</small></td>
             <td class="mono">${esc(it.print_code)}<br><small>${esc(it.print_sku)}</small></td>
             <td class="mono">${esc(it.batch_number)}</td>
             <td class="mono">${esc(it.order_number)}</td>
@@ -382,55 +448,73 @@ function render() {
             </div></td>
             <td><button class="x" title="Remove" data-rm="${esc(it.component_barcode)}">×</button></td>
           </tr>`).join('')}</tbody></table></div>` : ''}
-      <div class="result" style="${runResults[line] ? 'display:block' : ''}">${runResults[line] || ''}</div>
-      <div class="err" id="err-${line}"></div>
+      <div class="result" style="${runResults[proc][g] ? 'display:block' : ''}">${runResults[proc][g] || ''}</div>
+      <div class="err" id="err-${id}"></div>
     </section>`;
   }).join('');
-  $('batches').innerHTML = html || '<section class="card"><div class="empty">Nothing added yet. Scan, paste or upload LUX / Mirror component barcodes. Each line gets its own batch.</div></section>';
-  LINES.forEach(updateSheets);
+  $('batches').innerHTML = html || `<section class="card"><div class="empty">${PROC[proc].hint}</div></section>`;
+  if (proc === 'uv') groups().forEach(updateSheets);
 }
 
 const sheetTimers = {};
-function updateSheets(line) {
-  clearTimeout(sheetTimers[line]);
-  const list = items.filter(it => it.line === line);
+function updateSheets(g) {
+  clearTimeout(sheetTimers[g]);
+  const list = items.filter(it => groupOf(it) === g);
   if (!list.length) return;
-  sheetTimers[line] = setTimeout(async () => {
+  sheetTimers[g] = setTimeout(async () => {
     const r = await fetch('/api/layout', { method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ pieces: list.map(it => ({ label: it.label, w: it.w_pt, h: it.h_pt })) }) });
     const d = await r.json();
-    if (sheetCounts[line] !== d.sheets) { sheetCounts[line] = d.sheets; const el = $('sheets-' + line); if (el) el.textContent = d.sheets + ' bed sheet(s)'; }
+    if (sheetCounts[g] !== d.sheets) { sheetCounts[g] = d.sheets; const el = $('sheets-' + gid(g)); if (el) el.textContent = d.sheets + ' bed sheet(s)'; }
   }, 150);
 }
 
+$('batches').addEventListener('change', e => {
+  const el = e.target.closest('[data-opt]'); if (!el) return;
+  const o = optsFor(el.dataset.g);
+  o[el.dataset.opt] = el.type === 'checkbox' ? el.checked : el.value;
+  render();
+});
+
 $('batches').addEventListener('click', async e => {
   const rm = e.target.closest('[data-rm]'), cl = e.target.closest('[data-clear]'), gen = e.target.closest('[data-gen]');
-  if (rm) { items = items.filter(it => it.component_barcode !== rm.dataset.rm); save(); render(); }
+  if (rm) { items = items.filter(it => it.component_barcode !== rm.dataset.rm); store[proc] = items; save(); render(); }
   if (cl) {
-    const line = cl.dataset.clear;
-    if (!confirm(`Clear all ${LINE_NAME[line]} pieces?`)) return;
-    items = items.filter(it => it.line !== line); delete runResults[line]; save(); render();
+    const g = cl.dataset.clear;
+    if (!confirm(`Clear all ${groupTitle(g)} pieces?`)) return;
+    items = items.filter(it => groupOf(it) !== g); store[proc] = items; delete runResults[proc][g]; save(); render();
   }
   if (gen) {
-    const line = gen.dataset.gen;
+    const g = gen.dataset.gen;
     gen.disabled = true; gen.textContent = 'Building PDFs…';
+    const body = { barcodes: items.filter(it => groupOf(it) === g).map(it => it.component_barcode), process: proc };
+    if (proc === 'sub') Object.assign(body, optsFor(g));
     try {
-      const r = await fetch('/api/runs', { method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ barcodes: items.filter(it => it.line === line).map(it => it.component_barcode) }) });
+      const r = await fetch('/api/runs', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
-      runResults[line] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${dlButtons(d.run_id)}`;
-      items = items.filter(it => it.line !== line); save(); render(); loadHistory();
+      const extra = d.process === 'sub'
+        ? ` · ${TPL_NAME[d.template]} · ${d.color} · ${d.mirror ? 'mirrored' : 'not mirrored'}${d.converted ? ` · ${d.converted} file(s) converted to ${d.color}` : ''}`
+          + (d.warnings && d.warnings.length ? `<br><span style="color:var(--warning)">⚠ ${d.warnings.map(esc).join('<br>⚠ ')}</span>` : '')
+        : '';
+      runResults[proc][g] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${extra}${dlButtons(d)}`;
+      items = items.filter(it => groupOf(it) !== g); store[proc] = items; save(); render(); loadHistory();
     } catch (err) {
-      const el = $('err-' + line); el.textContent = err.message; el.style.display = 'block';
-      gen.disabled = false; gen.textContent = `Generate ${LINE_NAME[line]} PDFs`;
+      const el = $('err-' + gid(g)); el.textContent = err.message; el.style.display = 'block';
+      gen.disabled = false; gen.textContent = `Generate ${groupTitle(g)} PDF${proc === 'sub' ? '(s)' : 's'}`;
     }
   }
 });
 
-function dlButtons(runId, small) {
-  const b = '/runs/' + encodeURIComponent(runId) + '/';
-  const sz = small ? ' cd-btn-sm' : ' cd-btn-sm';
+function dlButtons(m, small) {
+  const b = '/runs/' + encodeURIComponent(m.run_id) + '/';
+  const sz = ' cd-btn-sm';
+  if (m.process === 'sub') {
+    return `<div class="dl${small ? ' sm' : ''}">
+    <a class="cd-btn${sz} zip" href="${b}zip">⬇ ZIP</a>
+    <a class="cd-btn${sz} print" href="${b}file" target="_blank">${m.sheets > 1 ? `Sheet PDFs (${m.sheets})` : 'Sheet PDF'}</a>
+    <a class="cd-btn${sz} xlsx" href="${b}xlsx">Excel</a></div>`;
+  }
   return `<div class="dl${small ? ' sm' : ''}">
     <a class="cd-btn${sz} zip" href="${b}zip">⬇ ZIP</a>
     <a class="cd-btn${sz} print" href="${b}file" target="_blank">File PDF</a>
@@ -438,19 +522,28 @@ function dlButtons(runId, small) {
     <a class="cd-btn${sz} spot" href="${b}spot" target="_blank">Spot PDF</a>
     <a class="cd-btn${sz} xlsx" href="${b}xlsx">Excel</a></div>`;
 }
+const runProc = m => m.process || (m.run_id.startsWith('SUB_') ? 'sub' : 'uv');
+const runBadges = m => runProc(m) === 'sub'
+  ? `${famBadge(m.family)} ${lineBadge(m.template || m.line)} <span class="cd-badge cd-badge-gray">${esc(m.color || '')}${m.mirror === false ? ' · not mirrored' : ''}</span>`
+  : lineBadge(m.line);
 
 let allRuns = [];
 function renderHistory() {
-  const line = $('hFilter').value, q = $('hSearch').value.trim().toLowerCase();
-  const rows = allRuns.filter(m => (!line || m.line === line) &&
-    (!q || m.run_id.toLowerCase().includes(q) || (m.user || '').toLowerCase().includes(q)));
+  const f = $('hFilter').value, qs = $('hSearch').value.trim().toLowerCase();
+  const rows = allRuns.filter(m => runProc(m) === proc && (!f || m.line === f || m.family === f) &&
+    (!qs || m.run_id.toLowerCase().includes(qs) || (m.user || '').toLowerCase().includes(qs)));
   $('hist').innerHTML = rows.map(m => `<tr>
       <td class="mono"><b>${esc(m.run_id)}</b></td>
-      <td>${lineBadge(m.line)}</td>
+      <td>${runBadges(m)}</td>
       <td>${esc(m.created.replace('T', ' '))}</td>
       <td>${m.pieces}</td><td>${m.sheets}</td><td>${esc(m.user)}</td>
-      <td>${dlButtons(m.run_id, true)}</td></tr>`).join('');
+      <td>${dlButtons({ ...m, process: runProc(m) }, true)}</td></tr>`).join('');
   $('histEmpty').style.display = rows.length ? 'none' : 'block';
+}
+function historyFilters() {
+  const opts = proc === 'uv' ? [['LUX', 'LUX'], ['MIRROR', 'Mirror']]
+    : [['BOLD', 'Bold'], ['CLASSIC', 'Classic'], ['6UP', '6UP'], ['6UP-EXT', '6UP Extended']];
+  $('hFilter').innerHTML = '<option value="">All</option>' + opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
 }
 $('hFilter').addEventListener('change', renderHistory);
 $('hSearch').addEventListener('input', renderHistory);
@@ -459,23 +552,36 @@ async function loadHistory() {
   const r = await fetch('/api/runs'); if (!r.ok) return;
   allRuns = await r.json();
   renderHistory();
-  const m = allRuns[0];
-  $('last').innerHTML = m ? `<div class="cd-kpi-label">Last batch</div>
+  const m = allRuns.find(x => runProc(x) === proc);
+  $('last').innerHTML = m ? `<div class="cd-kpi-label">Last ${PROC[proc].name} batch</div>
       <div class="cd-kpi-value">${esc(m.run_id)}</div>
-      <div class="cd-kpi-sub">${esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
-      ${dlButtons(m.run_id)}`
-    : '<div class="cd-kpi-label">Last batch</div><div class="cd-kpi-sub" style="margin-top:6px">No batches generated yet.</div>';
+      <div class="cd-kpi-sub">${runProc(m) === 'sub' ? `${esc(FAMILY_NAME[m.family] || '')} · ${esc(TPL_NAME[m.template] || '')} · ${esc(m.color || '')}` : esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
+      ${dlButtons({ ...m, process: runProc(m) })}`
+    : `<div class="cd-kpi-label">Last ${PROC[proc].name} batch</div><div class="cd-kpi-sub" style="margin-top:6px">No batches generated yet.</div>`;
 }
 
 const PAGES = {
-  build: ['UV Mix · Build batch', 'Scan, paste or upload LUX & Mirror component barcodes → File, Die and Spot PDFs + Excel.'],
-  history: ['UV Mix · History', 'Every generated batch with its File, Die, Spot PDFs and Excel.'],
+  uv: {
+    build: ['UV Mix · Build batch', 'Scan, paste or upload LUX & Mirror component barcodes → File, Die and Spot PDFs + Excel.'],
+    history: ['UV Mix · History', 'Every generated UV batch with its File, Die, Spot PDFs and Excel.'],
+  },
+  sub: {
+    build: ['Sublimation · Build batch', 'Scan, paste or upload 6UP component barcodes → mirrored sheets on the 6UP / 6UP Extended template (RGB or CMYK) + Excel.'],
+    history: ['Sublimation · History', 'Every generated Sublimation batch with its sheet PDFs and Excel.'],
+  },
 };
-function showView(view) {
+function showView(view, p) {
+  if (p && p !== proc) {          // switch process: keep each process's own scan list
+    store[proc] = items; proc = p; items = store[proc];
+    $('scan').placeholder = proc === 'sub' ? 'Scan Sublimation component barcode (B433…)' : 'Scan component barcode (B433…)';
+    historyFilters(); render(); msg(''); showReport([]);
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + view));
-  document.querySelectorAll('#navMenu [data-view]').forEach(a => a.classList.toggle('top-nav__dropdown-link--active', a.dataset.view === view));
-  $('pageTitle').textContent = PAGES[view][0]; $('pageSub').textContent = PAGES[view][1];
-  if (view === 'history') loadHistory(); else if ($('pane-scan').classList.contains('on')) $('scan').focus();
+  document.querySelectorAll('#navMenu [data-view]').forEach(a => a.classList.toggle('top-nav__dropdown-link--active', a.dataset.view === view && a.dataset.proc === proc));
+  $('pageTitle').textContent = PAGES[proc][view][0]; $('pageSub').textContent = PAGES[proc][view][1];
+  try { localStorage.setItem('mb.view', JSON.stringify([view, proc])); } catch (e) {}
+  loadHistory();
+  if (view === 'build' && $('pane-scan').classList.contains('on')) $('scan').focus();
 }
 function toggleMenu(btn, menu, open) {
   const show = open ?? menu.hidden;
@@ -483,7 +589,7 @@ function toggleMenu(btn, menu, open) {
 }
 $('navBatching').addEventListener('click', e => { e.stopPropagation(); $('userMenu').hidden = true; toggleMenu($('navBatching'), $('navMenu')); });
 $('userBtn').addEventListener('click', e => { e.stopPropagation(); toggleMenu($('navBatching'), $('navMenu'), false); $('userMenu').hidden = !$('userMenu').hidden; });
-document.querySelectorAll('#navMenu [data-view]').forEach(a => a.addEventListener('click', () => { toggleMenu($('navBatching'), $('navMenu'), false); showView(a.dataset.view); }));
+document.querySelectorAll('#navMenu [data-view]').forEach(a => a.addEventListener('click', () => { toggleMenu($('navBatching'), $('navMenu'), false); showView(a.dataset.view, a.dataset.proc); }));
 document.addEventListener('click', e => {
   if (!e.target.closest('#navMenu, #navBatching')) toggleMenu($('navBatching'), $('navMenu'), false);
   if (!e.target.closest('#userMenu, #userBtn')) $('userMenu').hidden = true;
@@ -494,7 +600,11 @@ document.addEventListener('click', e => {
   if ($('view-build').classList.contains('on') && $('pane-scan').classList.contains('on') &&
       !e.target.closest('input,button,a,textarea,label,table,select')) $('scan').focus();
 });
-render(); loadHistory();
+historyFilters();
+let start = ['build', 'uv'];
+try { start = JSON.parse(localStorage.getItem('mb.view') || 'null') || start; } catch (e) {}
+showView(start[0], start[1]);
+render();
 </script>
 </body>
 </html>
