@@ -17,7 +17,8 @@ from .fetch import cached_file, cached_path, image_info
 from .importer import parse_text, parse_upload, template_csv, template_xlsx
 from .layout import MM, layout
 from .pulse import LookupError_, lookup_many, normalise
-from .runs import create_run, create_sub_run, list_runs, run_file
+from .runs import create_custom_run, create_run, create_sub_run, list_runs, run_file
+from . import custom as cust
 from . import sub_templates as subt
 import tempfile
 
@@ -206,17 +207,21 @@ def preview_layout(req: LayoutReq, request: Request):
 
 
 class RunReq(BaseModel):
-    barcodes: list
+    barcodes: list = []    # empty for a custom-artwork Sublimation batch
     process: str = "uv"
     template: str = "6UP-EXT"  # sublimation: 6UP / 6UP-EXT (default Extended)
     color: str = "CMYK"        # sublimation: RGB / CMYK (default CMYK)
     mirror: bool = True    # sublimation: flip artwork (default on)
+    custom: list = []      # sublimation: uploaded artwork [{fetch_url, name, copies}] instead of barcodes
+    fit: bool = False      # sublimation custom: scale artwork to fit the slot
 
 
 @app.post("/api/runs")
 def new_run(req: RunReq, request: Request):
     user = _require_user(request)
     try:
+        if _process(req.process) == "sub" and req.custom:
+            return create_custom_run(req.custom, req.template, req.color, user=user, mirror=req.mirror, fit=req.fit)
         if _process(req.process) == "sub":
             return create_sub_run([str(b) for b in req.barcodes], req.template, req.color, user=user, mirror=req.mirror)
         return create_run([str(b) for b in req.barcodes], user=user)
@@ -254,6 +259,34 @@ def thumb(url: str, request: Request):
             bg.paste(im.convert("RGBA"), mask=im.convert("RGBA").getchannel("A"))
             bg.save(t, "JPEG", quality=80)
     return FileResponse(t, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+
+@app.post("/api/sub/custom/files")
+async def custom_files(request: Request, files: list[UploadFile] = File(...)):
+    """Custom artwork from the computer: one or more image files."""
+    _require_user(request)
+    items, errors = [], []
+    for f in files:
+        data = await f.read()
+        try:
+            items.append(await run_in_threadpool(cust.save_bytes, data, f.filename))
+        except cust.CustomError as e:
+            errors.append({"barcode": f.filename, "error": str(e)})
+    return {"items": items, "errors": errors}
+
+
+class UrlReq(BaseModel):
+    url: str
+
+
+@app.post("/api/sub/custom/url")
+def custom_url(req: UrlReq, request: Request):
+    """Custom artwork from a link (direct image URL; Dropbox share links work too)."""
+    _require_user(request)
+    try:
+        return {"items": [cust.save_url(req.url)], "errors": []}
+    except cust.CustomError as e:
+        return {"items": [], "errors": [{"barcode": req.url, "error": str(e)}]}
 
 
 @app.get("/api/sub/templates")

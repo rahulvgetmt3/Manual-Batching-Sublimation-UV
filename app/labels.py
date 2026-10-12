@@ -189,3 +189,56 @@ def build_labels(items, out_path, title):
             Type=Name.Page, MediaBox=box, CropBox=box, TrimBox=box,
             Contents=pdf.make_stream(label_ops(it).encode("latin-1")), Resources=Dictionary())))
     pdf.save(out_path, min_version="1.6")
+
+
+def custom_label_ops(e):
+    """Basic 2x1 label for custom artwork (no Pulse order), same look as the item label:
+         SUB_CUSTOM_..._01 | Custom artwork
+         <TEXT PRINTED BESIDE THE ARTWORK>
+         ------------------------------------------------
+         SHEET S1-3                               [QR: run|S1-3|text]
+         QTY 2 / 4                                 S1-3
+    e: {run_id, pos, name, copy_no, copies}"""
+    ops = []
+    inner_l, inner_r = PAD_L, DESIGN_W - PAD_R
+    width = inner_r - inner_l
+    y = PAD_T
+    head, tag = e["run_id"], " | Custom artwork"
+    s1 = _fit(head, 45, "black", width * 0.62)
+    base = y + s1 * 0.95
+    ops.append(_text(head, inner_l, base, s1, "black"))
+    ops.append(_text(tag, inner_l + _width(head, s1, "black"), base, _fit(tag, 40, "bold", width - _width(head, s1, "black")),
+                     "bold", gray=0x44 / 255))
+    y += s1 * 1.2 + 9
+    lines = _wrap((e["name"] or "Custom artwork").upper(), 54, "black", width)
+    size = min(_fit(ln, 54, "black", width) for ln in lines) if lines else 54
+    for ln in lines:
+        ops.append(_text(ln, inner_l, y + size * 0.92, size, "black"))
+        y += size * 1.1
+    y += 6
+    ops.append(f"0 G {3 * K:.3f} w {inner_l * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} m "
+               f"{inner_r * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} l S")
+    y += 3 + 6
+    sheet = f"SHEET {e['pos']}"
+    ops.append(_text(sheet, inner_l, y + 51 * 0.95, 51, "bold", gray=0x22 / 255))
+    yl = y + 51 * 1.2 + 9
+    qty_base = yl + 69 * 0.95
+    ops.append(_text("QTY", inner_l, qty_base, 27, "bold", gray=0x55 / 255))
+    ops.append(_text(f"{e['copy_no']} / {e['copies']}", inner_l + _width("QTY", 27, "bold") + 14, qty_base, 69, "black"))
+    qr_x = inner_r - QR_PX
+    ops.append(_qr(f"{e['run_id']}|{e['pos']}|{e['name']}", qr_x, y, QR_PX))
+    ops.append(_text(e["pos"], qr_x + QR_PX / 2 - _width(e["pos"], 20, "black") / 2, y + QR_PX + 3 + 20, 20, "black"))
+    return "\n".join(o for o in ops if o)
+
+
+def build_custom_labels(entries, out_path, title):
+    """One basic label per custom piece (page), in slot order."""
+    pdf = pikepdf.new()
+    pdf.docinfo[Name.Title] = title
+    pdf.docinfo[Name.Creator] = "MT3 Manual Batching"
+    box = Array([0, 0, PAGE_W, PAGE_H])
+    for e in entries:
+        pdf.pages.append(pikepdf.Page(Dictionary(
+            Type=Name.Page, MediaBox=box, CropBox=box, TrimBox=box,
+            Contents=pdf.make_stream(custom_label_ops(e).encode("latin-1", "replace")), Resources=Dictionary())))
+    pdf.save(out_path, min_version="1.6")

@@ -47,6 +47,10 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-12: Sublimation custom artwork
+- New Custom artwork tab: upload files or a link. The table shows the image next to the text printed beside it, plus copies. Batches support fit-to-slot or actual size and the same template, flip and CMYK/RGB options, with basic 2 × 1 labels per sheet.
+- Tested through the API; Rahul still needs to try the screen.
+
 ### 2026-10-12: Design team running
 - The Design (Sublimation) team PC is set up and **working**. It had Python 3.14 and needed 3.13 installed alongside; the docs and Setup message are updated.
 

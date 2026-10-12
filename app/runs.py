@@ -9,13 +9,13 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .fetch import cached_file, image_info
+from .fetch import cached_file, cached_path, image_info
 from .layout import Placement, layout
 from .manifest import write_manifest
 from .pdf_build import build_pdfs
 from .spot_pdf import build_spot_pdf
 from .pulse import lookup_many, normalise
-from .labels import build_labels
+from .labels import build_custom_labels, build_labels
 from .sub_build import build_sheet, image_mode
 from .sub_templates import DEFAULT_TEMPLATE, registry
 
@@ -26,7 +26,7 @@ def _safe(s):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
 
 
-RUN_ID_RE = re.compile(r"(UV_[A-Z]+|SUB_(BOLD|CLASSIC|ESSENTIAL|OTHER)_[A-Z0-9-]{1,24}_(RGB|CMYK))_\d{8}_\d+")
+RUN_ID_RE = re.compile(r"(UV_[A-Z]+|SUB_(BOLD|CLASSIC|ESSENTIAL|OTHER|CUSTOM)_[A-Z0-9-]{1,24}_(RGB|CMYK))_\d{8}_\d+")
 
 
 def _claim_run_dir(line, prefix="UV"):
@@ -197,6 +197,93 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
         "converted": converted,
         "warnings": warnings,
         "barcodes": barcodes,
+    }
+    (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    with zipfile.ZipFile(out / f"{run_id}.zip", "w", zipfile.ZIP_DEFLATED) as z:
+        for f in (*sheet_pdfs, *label_pdfs, xlsx):
+            z.write(f, f.name)
+        for f in sorted((out / "files").iterdir()):
+            z.write(f, f"files/{f.name}")
+    return meta
+
+
+def _custom_manifest(rows, path, title):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pieces"
+    ws.append(["Sheet", "Position", "Name on sheet", "Width mm", "Height mm", "Fit to slot", "Source file"])
+    for c in ws[1]:
+        c.font = Font(bold=True, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor="1F2937")
+    for r in rows:
+        ws.append(r)
+    for col, w in zip("ABCDEFG", (7, 9, 40, 10, 10, 10, 40)):
+        ws.column_dimensions[col].width = w
+    wb.properties.title = title
+    wb.save(path)
+
+
+def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, fit=False):
+    """Sublimation sheets from artwork uploaded by the team (no Pulse order): same template,
+    flip and RGB/CMYK options; copies repeat an artwork; optional fit-to-slot. No item labels."""
+    from .custom import item_for
+    template = template or DEFAULT_TEMPLATE
+    templates = registry()
+    if template not in templates:
+        raise ValueError(f"Unknown template {template!r}")
+    color = (color or "CMYK").upper()
+    if color not in ("RGB", "CMYK"):
+        raise ValueError("Colour must be RGB or CMYK")
+    pieces = []
+    for c in custom or []:
+        key = str(c.get("fetch_url") or "")
+        if not key.startswith("custom://") or not cached_path(key).exists():
+            raise ValueError(f"Artwork {c.get('name') or key} is no longer on the server; upload it again")
+        it = item_for(key, str(c.get("name") or "Custom artwork")[:80])
+        copies = max(1, min(500, int(c.get("copies") or 1)))
+        for n in range(copies):
+            pieces.append({"path": cached_path(key), "w_pt": it["w_pt"], "h_pt": it["h_pt"],
+                           "name": it["name"], "src_mode": it["mode"], "fit": bool(fit),
+                           "copy_no": n + 1, "copies": copies})
+    if not pieces:
+        raise ValueError("No custom artwork added")
+    per_sheet = len(templates[template]["slots"])
+
+    run_id = _claim_run_dir(f"CUSTOM_{template}_{color}", prefix="SUB")
+    out = RUNS_DIR / run_id
+    (out / "files").mkdir()
+    sheets = (len(pieces) + per_sheet - 1) // per_sheet
+    sheet_pdfs, label_pdfs, warnings, rows = [], [], [], []
+    for s in range(sheets):
+        chunk = pieces[s * per_sheet:(s + 1) * per_sheet]
+        pdf_path = out / f"{run_id}_S{s + 1}.pdf"
+        for w in build_sheet(template, color, chunk, pdf_path, pdf_path.stem, mirror=mirror):
+            warnings.append(f"sheet {s + 1} {w}")
+        sheet_pdfs.append(pdf_path)
+        # basic 2x1" labels from the table: text, sheet position, copy n / copies
+        lbl_path = out / f"{run_id}_S{s + 1}_LABELS.pdf"
+        build_custom_labels([{"run_id": run_id, "pos": f"S{s + 1}-{i + 1}", "name": pc["name"],
+                              "copy_no": pc["copy_no"], "copies": pc["copies"]} for i, pc in enumerate(chunk)],
+                            lbl_path, lbl_path.stem)
+        label_pdfs.append(lbl_path)
+        for i, pc in enumerate(chunk):
+            rows.append([s + 1, i + 1, pc["name"], round(pc["w_pt"] / 72 * 25.4, 1),
+                         round(pc["h_pt"] / 72 * 25.4, 1), "yes" if fit else "", pc["path"].name])
+    xlsx = out / f"{run_id}_manifest.xlsx"
+    _custom_manifest(rows, xlsx, run_id)
+    for p in {pc["path"] for pc in pieces}:
+        shutil.copyfile(p, out / "files" / p.name)
+
+    meta = {
+        "run_id": run_id, "process": "sub", "custom": True, "line": template, "family": "CUSTOM",
+        "template": template, "template_title": templates[template]["title"], "per_sheet": per_sheet,
+        "color": color, "mirror": bool(mirror), "fit": bool(fit),
+        "created": dt.datetime.now().isoformat(timespec="seconds"), "user": user,
+        "pieces": len(pieces), "sheets": sheets,
+        "converted": sum(1 for pc in pieces if pc["src_mode"] != color), "warnings": warnings,
+        "artworks": [{"name": c.get("name"), "copies": c.get("copies", 1), "file": c.get("fetch_url")} for c in custom],
     }
     (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     with zipfile.ZipFile(out / f"{run_id}.zip", "w", zipfile.ZIP_DEFLATED) as z:

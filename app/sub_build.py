@@ -147,6 +147,9 @@ def build_sheet(template, color, pieces, out_path, title, mirror=True):
         name, xo = cache[key]
         res.XObject[Name("/" + name)] = xo
         w, h = pc["w_pt"], pc["h_pt"]
+        if pc.get("fit"):  # custom artwork: scale proportionally to fit the slot (never stretched)
+            k = min(sw / w, sh / h)
+            w, h = w * k, h * k
         cx, cy = sx + sw / 2, sy + sh / 2
         x0, y0 = cx - w / 2, cy - h / 2
         if w > sw + 0.5 or h > sh + 0.5:

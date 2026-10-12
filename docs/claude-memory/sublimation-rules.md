@@ -66,3 +66,13 @@ Related: [[uv-mix-portal-overview]], [[pulse-design-system]], [[uv-mix-team-requ
 - **Drawing:** vector text (Open Sans Bold/Semibold in place of Calibri) and a vector QR (`segno`). The QR was verified to decode to the component barcode.
 - **Privacy:** labels contain customer names; they stay in `data/`, which is git-ignored.
 - **Status:** Rahul confirmed on 2026-10-12 that it works ("it worked").
+
+**Custom artwork (2026-10-12):** Rahul asked for sheets from artwork the team uploads from their computer or a link, with no Pulse order.
+- **Input:** the **Custom artwork** tab, shown on Sublimation only. Drop or choose PNG/JPG/TIFF/WebP files (several at once), or paste a direct image link; Dropbox `dl=0` is turned into `dl=1`.
+- **Storage:** `app/custom.py` stores each upload in the file cache under `custom://<sha>.<ext>`, so thumbnails and sizing are reused. PDF/AI artwork isn't accepted; export it as PNG/TIFF.
+- **On screen:** a separate **Custom artwork** batch (family CUSTOM). Its **side-by-side table** has the image, an editable "Text printed beside the artwork" box (defaults to the file name), **Copies**, size, DPI with a low-DPI badge, and a "larger than slot" warning.
+- **Options:** the same Template, Export (CMYK default), Flip (default on) and a **Size** choice: Actual size (file DPI, default) or **Fit to slot** (proportional).
+- **Output:** `create_custom_run` writes one PDF per sheet, plus an Excel (Pieces: sheet, position, name, size, fit, file), a ZIP, and **basic 2 × 1 labels** per sheet.
+  - **Label content:** run id | Custom artwork / the text / SHEET S1-n / QTY copy/copies / QR `run|S1-n|text`. This is `labels.build_custom_labels`.
+  - **Run id:** `SUB_CUSTOM_<TPL>_<COLOR>_<date>_NN`.
+- **Tested via the API:** files and link, fit and actual size, RGB and CMYK, a 7-piece run across 2 sheets, labels, and QR decoding. The **UI hasn't been clicked through yet**; Rahul is to check it.
