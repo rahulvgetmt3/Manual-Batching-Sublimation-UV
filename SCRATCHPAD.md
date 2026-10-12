@@ -47,6 +47,9 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-12: Design team running
+- The Design (Sublimation) team PC is set up and **working**. It had Python 3.14 and needed 3.13 installed alongside; the docs and Setup message are updated.
+
 ### 2026-10-12: Package for the Sublimation (Design) team
 - Built `dist/Manual-Batching-Sublimation-TEAM.zip` with login **DesignTeam** (the password is in the ZIP's START HERE.txt and `dist/LOGINS-private.txt`). It opens on Sublimation.
 - Generic "Manual Batching" naming and `Start Manual Batching.bat` (`40906bc`). The UV team still has the older package and launcher name until they get an update.

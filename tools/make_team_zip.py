@@ -60,8 +60,10 @@ def main():
 Everything is already set up - no settings to change.
 
 1. Copy the "Manual Batching" folder to this PC (e.g. C:\\Manual Batching).
-2. Install Python 3.12 if not already installed: https://www.python.org/downloads/
-   On the first installer screen tick "Add python.exe to PATH".
+2. Install Python 3.13 (PowerShell: winget install Python.Python.3.13, or
+   https://www.python.org/downloads/windows/ -> latest 3.13.x "Windows installer (64-bit)").
+   Tick "Add python.exe to PATH". Python 3.14 is NOT supported yet - if the PC has 3.14,
+   keep it and install 3.13 alongside; Setup picks 3.13 automatically.
 3. Double-click  Setup.bat  (once; takes a few minutes). It should end with
    "OK - connected to Pulse."
 4. Double-click  Start Manual Batching.bat  (every day). The browser opens

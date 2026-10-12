@@ -5,7 +5,9 @@ It's meant for testing; the live version will be hosted online later.
 
 ## One-time setup
 1. **Copy this whole folder** to the PC, for example to `C:\Manual Batching`.
-2. **Install Python 3.12** if it isn't already installed. Get it from https://www.python.org/downloads/ (the Windows installer, 64-bit). On its first screen, tick **"Add python.exe to PATH"**.
+2. **Install Python 3.13** (3.10–3.13 all work). In PowerShell run `winget install Python.Python.3.13`, or download "Windows installer (64-bit)" for the latest 3.13.x from https://www.python.org/downloads/windows/. On its first screen, tick **"Add python.exe to PATH"** and keep the **py launcher** option.
+   - **Python 3.14 doesn't work yet** because some components have no 3.14 build. If the PC already has 3.14, leave it and install 3.13 alongside it. Setup picks 3.13 automatically.
+   - Security-only releases such as 3.12.15 have no Windows installer. Use 3.13, or 3.12.10.
 3. **Double-click `Setup.bat`.** The first run takes a few minutes. It does three things:
    - installs everything the portal needs, inside this folder only;
    - opens a settings file in Notepad;

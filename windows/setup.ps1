@@ -20,10 +20,10 @@ foreach ($cand in @("py -3.12", "py -3.13", "py -3.11", "py -3.10", "python", "p
 }
 if (-not $python) {
     Write-Host ""
-    Write-Host "Python 3.12 is not installed." -ForegroundColor Yellow
-    Write-Host "Install it from https://www.python.org/downloads/release/python-3120/ (Windows installer 64-bit),"
-    Write-Host "tick 'Add python.exe to PATH' on the first screen, then run Setup.bat again."
-    Write-Host "(Or in PowerShell:  winget install Python.Python.3.12 )"
+    Write-Host "Python 3.10 - 3.13 is not installed (3.14 is not supported yet)." -ForegroundColor Yellow
+    Write-Host "In PowerShell run:  winget install Python.Python.3.13"
+    Write-Host "or download the latest 3.13.x 'Windows installer (64-bit)' from https://www.python.org/downloads/windows/"
+    Write-Host "(tick 'Add python.exe to PATH'). 3.13 can sit next to 3.14. Then run Setup.bat again."
     Read-Host "Press Enter to close"
     exit 1
 }
