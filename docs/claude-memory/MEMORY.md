@@ -5,4 +5,4 @@
 - [Pulse lookup for UV mix](pulse-lookup-for-uv-mix.md) — barcode joins, status vocab, 403 files, DB access works on this Mac
 - [Windows test package](windows-test-package.md) — Setup.bat/Start UV Mix.bat; team ZIP built only by Rahul; app-update.zip for fixes; always encoding="utf-8" (Windows cp1252)
 - [Rahul profile](rahul-profile.md) — MT3 print ops, non-developer, verifies visually in Photoshop/Illustrator
-- [Pulse design system](pulse-design-system.md) — UI uses Pulse CSS verbatim (pulse-shell.css) + Batching dropdown so it ports into Pulse; Segoe UI/Tahoma font
+- [Pulse design system](pulse-design-system.md) — UI uses Pulse CSS verbatim (pulse-shell.css) + "Manual Batching" dropdown so it ports into Pulse; Segoe UI/Tahoma font
