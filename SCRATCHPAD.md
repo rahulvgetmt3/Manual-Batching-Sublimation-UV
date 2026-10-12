@@ -2,7 +2,7 @@
 
 This is the running log of work on the UV Mix Batch portal. Notes on how things work live in [docs/claude-memory/](docs/claude-memory/); Claude's memory for this folder links there. How to run and deploy is in [README.md](README.md). The full chat is in [chat/](chat/).
 
-**Repo:** https://github.com/rahulvgetmt3/uv-mix-batch (private, branch `main`). `data/`, `Reference/`, `.venv` and the raw chat `.jsonl` are git-ignored.
+**Repo:** https://github.com/rahulvgetmt3/uv-mix-batch (private). Branch `main` holds UV Mix with the Pulse theme; the UV team's PCs still run an older copy. Branch **`sublimation`** adds Sublimation and the layout fix. It's on Rahul's Mac and gets merged when approved. `data/`, `Reference/`, `.venv` and the raw chat `.jsonl` are git-ignored.
 
 To keep it current: after each session, add a dated entry at the top of the **Log**, add a row to **Sessions**, and update **Open items**.
 
@@ -28,6 +28,11 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 - [ ] **Team history visible to Rahul:** decide on a shared runs folder (OneDrive, Google Drive or network drive) for the testing period. Otherwise it comes automatically with hosting.
 - [ ] **Rebuild the team ZIP** (`python3 tools/make_team_zip.py`) before giving it to any new PC. The current TEAM zip predates the UTF-8 fix.
 
+**Sublimation (branch `sublimation`)**
+- [ ] Rahul or the team check the sheet PDFs in Illustrator and on the printer: mirroring, centring, names and RGB/CMYK.
+- [x] Confirmed 2026-10-12: Reconcile model = Pulse model name; any readable font for names; names may cross registration marks.
+- [ ] Merge into `main` and ship the update ZIP to the teams.
+
 **Known data issues**
 - [ ] **B433C9774F** (Mirror 17-P) returned 403 earlier, then downloaded fine later. Watch for other old printcloud `fetch_url`s.
 
@@ -36,10 +41,26 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 | Dates | Machine | Session | Main topics |
 |---|---|---|---|
 | 2026-10-11 | Mac | `38c655b4` | HP and Pulse access check; Current Work counts; LUX file download; portal designed and built (scan, bulk, upload, LUX/Mirror batches, File/Die/Spot/Excel, history, login); fixes for full-bed bounding box, right-aligned layout, Spot as a Photoshop-style PDF (Alph block), RIP-safe Die, Reconcile `LUX-15-PL`; GitHub repo; Windows test package; team connected |
+| 2026-10-12 | Mac | `38c655b4` (same session) | Pulse theme (verbatim Pulse CSS, Manual Batching dropdown), layout fix, **Sublimation**: 6UP/6UP-EXT templates, mirrored/centred sheets, names, Bold/Classic/Essential, all models, CMYK/RGB, flip toggle, any-size uploadable templates; branch `sublimation` |
 
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 
 ## Log
+
+### 2026-10-12: Any-size Sublimation templates
+- Templates can now be uploaded in the portal (Manual Batching ▾ › Sublimation › Templates). Slots, name sides, and frame and QR removal are detected automatically, and pieces per sheet follow the template.
+- Also: all Bold, Classic and Essential models are included (Casely-Bold-13/14/15, Casely-Bold-16e/17e, 4_Sublimation); green frames aren't printed; the defaults are 6UP Extended and CMYK.
+- **The team tests only 6UP for now.** 1UP, 10UP and others are uploaded when needed.
+
+### 2026-10-12: Sublimation built (branch `sublimation`)
+- Rahul's 9-step brief, plus: Bold and Classic on separate sheets (split by case type), a flip toggle (default mirrored), names as OrderID-Model-CaseType.
+- **Templates:** cleaned from the team's `.ai` files. QR codes are removed, and slots and registration marks are recorded. The SWOP profile is used for RGB/CMYK conversion and is never embedded.
+- **Tested** with real barcodes. Test runs: `SUB_BOLD_6UP_RGB_20261012_02`, `SUB_CLASSIC_6UP-EXT_CMYK_20261012_01`, `SUB_CLASSIC_6UP-EXT_RGB_20261012_01` (2 sheets), `SUB_BOLD_6UP_CMYK_20261012_01` (not flipped).
+- **Housekeeping:** the pending hidden-login change was moved out of `app/` into `dist/pending-admin-login.patch` and `dist/pending-admins.json` (Mac only) so it can't be committed.
+- **Next:**
+  - Rahul checks the sheets in Illustrator and on the printer;
+  - the reconcile "Model" format for Sublimation needs confirming;
+  - when approved, merge `sublimation` into `main` and send the teams an update.
 
 ### 2026-10-11 (end): Mac settings file
 - Added a git-ignored `.env` for Rahul's Mac with the portal login `Rahul`, a fixed SECRET_KEY and COOKIE_SECURE=0. It holds no DB password.
