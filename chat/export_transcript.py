@@ -7,10 +7,28 @@ Secrets: the DB_PASSWORD value found in the environment is masked (it has never 
 
 import json
 import os
+from pathlib import Path
 import re
 import sys
 
-SECRETS = [v for v in (os.environ.get("DB_PASSWORD"),) if v and len(v) >= 4]
+def _local_secrets():
+    """DB password from the environment plus portal passwords from the git-ignored local files
+    (dist/LOGINS-private.txt, .env PORTAL_USERS), so the transcript never shows them."""
+    vals = [os.environ.get("DB_PASSWORD")]
+    root = Path(__file__).resolve().parent.parent
+    logins = root / "dist" / "LOGINS-private.txt"
+    if logins.exists():
+        vals += [ln.split(":", 1)[1].strip() for ln in logins.read_text(encoding="utf-8").splitlines()
+                 if ln.strip().startswith("Password")]
+    env = root / ".env"
+    if env.exists():
+        for ln in env.read_text(encoding="utf-8").splitlines():
+            if ln.startswith("PORTAL_USERS="):
+                vals += [u.split(":", 1)[1] for u in ln.split("=", 1)[1].split(",") if ":" in u]
+    return [v for v in vals if v and len(v) >= 4]
+
+
+SECRETS = _local_secrets()
 
 
 def mask(s):

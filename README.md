@@ -11,6 +11,8 @@ Add component barcodes (or item barcodes, which resolve to their component) by:
 - **Paste list**: many at once, separated by newlines, commas or spaces.
 - **Upload file**: a CSV or Excel file with a `Component Barcode` column. Templates download from the Upload tab (`/api/template.xlsx`, `/api/template.csv`). If the file has no such column, every cell that looks like a barcode is used.
 
+**Custom artwork** (tab next to Upload file): upload PNG/JPG/TIFF/WebP files or paste a direct link. A table shows each image beside an editable **name for the die** and **Copies**. These go into their own `UV_CUSTOM_…` batch, which gives the same File, Die and Spot PDFs + Excel. Each die cut is the image's exact size at its DPI; the typed name is printed above it on the die only, and shrinks if it is wider than the piece. In the Excel, Reconcile shows `CUSTOM` and Model shows the typed name.
+
 Rejected codes are listed with the reason: not found, not LUX or Mirror, no print file, file won't download, or a duplicate.
 
 For a 2180 × 1220 mm UV bed, each run gives you:

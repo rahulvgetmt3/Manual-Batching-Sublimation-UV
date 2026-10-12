@@ -47,6 +47,10 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-12: UV custom artwork + team update package
+- **UV custom artwork:** the same Custom artwork tab now works on UV Mix. It builds a separate `UV_CUSTOM_…` batch with File, Die and Spot PDFs plus Excel. Each die cut is the exact image size, and the typed name is printed on the die only. Tested via the API: the cuts matched the images, and Rahul confirmed the Sublimation custom flow works well.
+- **Team update:** `dist/Manual-Batching-UPDATE.zip` contains no credentials. The team copies it over their existing folder, runs Setup.bat once, starts with "Start Manual Batching.bat", then presses Ctrl+F5. Rahul is sending it to both teams. Status: all set.
+
 ### 2026-10-12: Sublimation custom artwork
 - New Custom artwork tab: upload files or a link. The table shows the image next to the text printed beside it, plus copies. Batches support fit-to-slot or actual size and the same template, flip and CMYK/RGB options, with basic 2 × 1 labels per sheet.
 - Tested through the API; Rahul still needs to try the screen.

@@ -23,6 +23,13 @@ It's meant for testing; the live version will be hosted online later.
 - **Keep the black window open** while you work. Closing it stops the portal.
 - **Your files:** finished batches (ZIP, File, Die and Spot PDFs, Excel) download from the browser, and a copy is kept in `data\runs\`.
 
+## Installing an update
+
+1. Close the black portal window.
+2. Copy everything from the update ZIP into this folder and choose **Replace the files**. Don't delete the folder first: `.env` holds your login and `data` holds your History.
+3. Double-click **Setup.bat** once.
+4. Start with **Start Manual Batching.bat**, then press **Ctrl + F5** in the browser.
+
 ## If something goes wrong
 - **Windows says "Windows protected your PC"** when you run a `.bat` file: click **More info**, then **Run anyway**.
 - **The browser says "can't reach this page"**: check that the black window is still open, then refresh.
