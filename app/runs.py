@@ -294,6 +294,65 @@ def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", 
     return meta
 
 
+def create_uv_custom_run(custom, user=""):
+    """UV bed from artwork uploaded by the team (no Pulse order): File, Die and Spot PDFs + Excel,
+    same right-aligned layout as LUX/Mirror. Die = each image's exact size; the die label is the
+    text typed in the table. Copies repeat an artwork."""
+    from types import SimpleNamespace
+    from .custom import item_for
+    items, pieces = [], []
+    for c in custom or []:
+        key = str(c.get("fetch_url") or "")
+        if not key.startswith("custom://") or not cached_path(key).exists():
+            raise ValueError(f"Artwork {c.get('name') or key} is no longer on the server; upload it again")
+        it = item_for(key, str(c.get("name") or "Custom artwork")[:80])
+        copies = max(1, min(500, int(c.get("copies") or 1)))
+        path = cached_path(key)
+        info = image_info(path)
+        for n in range(copies):
+            items.append(SimpleNamespace(
+                label=it["name"], line="CUSTOM", reconcile_model=it["name"], batch_number="CUSTOM",
+                order_number="", hp_order_id="", component_barcode=f"{it['component_barcode']}-{n + 1}",
+                item_barcode="", print_code="", print_sku="", sku="", model="", case_type="",
+                job_status="custom", order_status="", item_status="", reprint=False, reprint_reason="",
+                status_updated="", fetch_url=key))
+            pieces.append({"label": it["name"], "w": info["w_pt"], "h": info["h_pt"], "path": path, "info": info})
+    if not pieces:
+        raise ValueError("No custom artwork added")
+
+    placements = layout(pieces)
+    run_id = _claim_run_dir("CUSTOM")
+    out = RUNS_DIR / run_id
+    (out / "files").mkdir()
+    file_pdf = out / f"{run_id}_FILE.pdf"
+    die_pdf = out / f"{run_id}_DIE.pdf"
+    xlsx = out / f"{run_id}_manifest.xlsx"
+    build_pdfs(placements, pieces, file_pdf, die_pdf, run_id)
+    sheets = max(p.sheet for p in placements)
+    spot_pdfs = []
+    for s in range(1, sheets + 1):
+        sp = out / (f"{run_id}_SPOT.pdf" if sheets == 1 else f"{run_id}_SPOT_S{s}.pdf")
+        build_spot_pdf([p for p in placements if p.sheet == s], pieces, items, sp, sp.stem)
+        spot_pdfs.append(sp)
+    write_manifest(placements, items, xlsx, run_id)
+    for p in {pc["path"] for pc in pieces}:
+        shutil.copyfile(p, out / "files" / p.name)
+
+    meta = {
+        "run_id": run_id, "process": "uv", "custom": True, "line": "CUSTOM",
+        "created": dt.datetime.now().isoformat(timespec="seconds"), "user": user,
+        "pieces": len(pieces), "sheets": sheets, "barcodes": [],
+        "artworks": [{"name": c.get("name"), "copies": c.get("copies", 1), "file": c.get("fetch_url")} for c in custom],
+    }
+    (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    with zipfile.ZipFile(out / f"{run_id}.zip", "w", zipfile.ZIP_DEFLATED) as z:
+        for f in (file_pdf, die_pdf, *spot_pdfs, xlsx):
+            z.write(f, f.name)
+        for f in sorted((out / "files").iterdir()):
+            z.write(f, f"files/{f.name}")
+    return meta
+
+
 def list_runs(limit=100):
     if not RUNS_DIR.exists():
         return []

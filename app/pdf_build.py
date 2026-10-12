@@ -17,7 +17,7 @@ from fontTools.ttLib import TTFont
 from pikepdf import Array, Dictionary, Name
 from PIL import Image
 
-from .layout import BED_H, BED_W, LABEL_OFFSET
+from .layout import BED_H, BED_W, GAP_X, LABEL_OFFSET
 
 Image.MAX_IMAGE_PIXELS = None
 
@@ -53,11 +53,15 @@ class _PdfPathPen(BasePen):
         self.ops.append("h")
 
 
-def _text_outline(text, cx, baseline, size=LABEL_SIZE):
-    """Text centred on cx as filled outlines (like Illustrator's Create Outlines)."""
+def _text_outline(text, cx, baseline, size=LABEL_SIZE, max_w=None):
+    """Text centred on cx as filled outlines (like Illustrator's Create Outlines).
+    max_w: shrink the text (never below 4 pt) so it is no wider than this."""
     names = [_CMAP.get(ord(c), ".notdef") for c in text]
     scale = size / _UPM
     width = sum(_GLYPHS[n].width for n in names) * scale
+    if max_w and width > max_w:
+        scale *= max(max_w / width, 4 / size)
+        width = sum(_GLYPHS[n].width for n in names) * scale
     x, ops = cx - width / 2, []
     for n in names:
         pen = _PdfPathPen(scale, x, baseline)
@@ -131,7 +135,7 @@ def _image_xobject(pdf, path):
 
 
 def _label_ops(p, text):
-    return _text_outline(text, p.x + p.w / 2, p.y + p.h + LABEL_OFFSET)
+    return _text_outline(text, p.x + p.w / 2, p.y + p.h + LABEL_OFFSET, max_w=p.w + GAP_X * 0.8)
 
 
 def _new_pdf(title):

@@ -25,3 +25,4 @@ Rules Rahul has set for the UV mix outputs. Each came from a correction or an ex
 **Why:** these match how the team prints today and how they reconcile batches.
 
 **How to apply:** keep them when changing the layout, PDF or Excel code. See [[uv-mix-portal-overview]].
+- **Custom artwork on UV (added 2026-10-12, branch `sublimation`):** same Custom artwork tab as Sublimation (upload/link, table with name + copies). Builds its own `UV_CUSTOM_…` batch: File/Die/Spot + Excel, die = exact image size, the typed name is the die label (shrunk if wider than the piece). Excel Reconcile: batch "CUSTOM", model = typed name. Rahul's ask: "just generate a die based on image size we upload and print name on die as we type in table". See [[sublimation-rules]].

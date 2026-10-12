@@ -17,7 +17,7 @@ from .fetch import cached_file, cached_path, image_info
 from .importer import parse_text, parse_upload, template_csv, template_xlsx
 from .layout import MM, layout
 from .pulse import LookupError_, lookup_many, normalise
-from .runs import create_custom_run, create_run, create_sub_run, list_runs, run_file
+from .runs import create_custom_run, create_run, create_uv_custom_run, create_sub_run, list_runs, run_file
 from . import custom as cust
 from . import sub_templates as subt
 import tempfile
@@ -207,12 +207,12 @@ def preview_layout(req: LayoutReq, request: Request):
 
 
 class RunReq(BaseModel):
-    barcodes: list = []    # empty for a custom-artwork Sublimation batch
+    barcodes: list = []    # empty for a custom-artwork batch
     process: str = "uv"
     template: str = "6UP-EXT"  # sublimation: 6UP / 6UP-EXT (default Extended)
     color: str = "CMYK"        # sublimation: RGB / CMYK (default CMYK)
     mirror: bool = True    # sublimation: flip artwork (default on)
-    custom: list = []      # sublimation: uploaded artwork [{fetch_url, name, copies}] instead of barcodes
+    custom: list = []      # UV or Sublimation: uploaded artwork [{fetch_url, name, copies}] instead of barcodes
     fit: bool = False      # sublimation custom: scale artwork to fit the slot
 
 
@@ -224,6 +224,8 @@ def new_run(req: RunReq, request: Request):
             return create_custom_run(req.custom, req.template, req.color, user=user, mirror=req.mirror, fit=req.fit)
         if _process(req.process) == "sub":
             return create_sub_run([str(b) for b in req.barcodes], req.template, req.color, user=user, mirror=req.mirror)
+        if req.custom:
+            return create_uv_custom_run(req.custom, user=user)
         return create_run([str(b) for b in req.barcodes], user=user)
     except (LookupError_, ValueError) as e:
         return JSONResponse({"error": str(e)}, status_code=422)
