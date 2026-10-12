@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from PIL import Image
@@ -25,6 +26,7 @@ SESSION_COOKIE = "uvmix_session"
 SESSION_MAX_AGE = 12 * 3600
 
 app = FastAPI(title="MT3 UV Mix Batch", docs_url=None, redoc_url=None)
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
 _signer = URLSafeTimedSerializer(os.environ.get("SECRET_KEY", "dev-only-change-me"), salt="uvmix")
 
 

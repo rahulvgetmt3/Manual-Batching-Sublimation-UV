@@ -94,18 +94,92 @@
   .hist a { color:var(--ink); margin-right:8px; font-size:12px; }
   .hist small { color:var(--muted); display:block; }
   .empty { color:var(--muted); text-align:center; padding:22px 0; }
+
+  /* ===== Pulse theme (matches pulse.getmt3.com) ===== */
+  :root { --bg:#f2f4f9; --card:#fff; --ink:#0d1220; --muted:#6f7b8f; --line:#e6e9f0;
+          --primary:#1b4dea; --primary-d:#1740c4; --indigo:#2f3da9;
+          --ok:#15803d; --okbg:#d7fce0; --warn:#c2410c; --warnbg:#fff1dc; --bad:#cc0a1c; --badbg:#fde8ea;
+          --chip:#e8e3ff; --chip-ink:#5b3fb3; --accent:var(--primary); }
+  body { font:14px/1.45 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:var(--bg); }
+  header.top { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:22px; padding:10px 24px;
+               background:linear-gradient(90deg,#5266e4 0%,#5657cb 35%,#5a47ae 70%,#5f3894 100%); border:0; color:#fff;
+               box-shadow:0 2px 8px rgba(40,30,110,.18); }
+  header.top .brand { display:flex; align-items:center; gap:14px; }
+  header.top .brand img { height:34px; display:block; }
+  header.top .brand b { display:block; font-size:16px; font-weight:700; letter-spacing:.01em; }
+  header.top .brand small { display:block; font-size:12px; opacity:.85; }
+  nav.views { margin-left:10px; gap:6px; }
+  nav.views button { color:#e6e8ff; font-weight:500; padding:8px 14px; border-radius:8px; }
+  nav.views button:hover { background:rgba(255,255,255,.12); }
+  nav.views button.on { background:rgba(255,255,255,.22); color:#fff; }
+  .userpill { display:flex; align-items:center; gap:10px; padding:6px 14px 6px 6px; border-radius:10px;
+              background:rgba(255,255,255,.16); color:#fff; font-weight:500; }
+  .userpill .av { width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.28); display:grid; place-items:center; font-weight:700; font-size:13px; }
+  .userpill a { color:#e6e8ff; font-size:12px; text-decoration:none; margin-left:6px; opacity:.9; }
+  .userpill a:hover { opacity:1; text-decoration:underline; }
+  main { max-width:1500px; padding:22px 24px 60px; }
+  .card { border:1px solid var(--line); border-radius:10px; box-shadow:0 1px 2px rgba(16,24,40,.04); }
+  /* input tabs: Pulse pill tabs */
+  .tabs { border:0; gap:6px; margin-bottom:14px; }
+  .tabs button { border:0; margin:0; padding:7px 16px; border-radius:7px; color:#3b4456; font-weight:600; }
+  .tabs button:hover { background:#eef1f8; }
+  .tabs button.on { background:var(--primary); color:#fff; }
+  .scan input { border:2px solid #c9d3f7; border-radius:10px; font-size:19px; }
+  .scan input:focus, textarea:focus { outline:0; border-color:var(--primary); box-shadow:0 0 0 3px rgba(27,77,234,.12); }
+  textarea { border-color:#d6dbe6; }
+  .btn { background:var(--primary); border-radius:6px; font-weight:600; }
+  .btn:hover:not(:disabled) { background:var(--primary-d); }
+  .btn.light { background:#fff; color:var(--ink); border:1px solid #d6dbe6; }
+  .btn.light:hover:not(:disabled) { background:#f5f7fb; }
+  .drop { background:#fafbff; border-color:#c9d3f7; }
+  .drop.over { border-color:var(--primary); background:#eef2ff; }
+  .tpl a { border-color:#d6dbe6; border-radius:6px; }
+  /* tables like Pulse */
+  th { color:#3b4456; font-weight:700; font-size:11.5px; letter-spacing:.05em; background:#f8f9fc; padding:10px 8px; }
+  td { padding:9px 8px; }
+  th, td { border-bottom:1px solid var(--line); }
+  tbody tr:hover td { background:#fafbff; }
+  tr.attn td { background:#fff7ec; }
+  .mono { font-family:"SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+  /* status badges: Pulse DONE / DRAFT style */
+  .st { text-transform:uppercase; letter-spacing:.04em; font-size:10.5px; font-weight:800; padding:3px 8px; border-radius:6px; }
+  .st.good { background:var(--okbg); color:var(--ok); }
+  .st.mid  { background:var(--warnbg); color:var(--warn); }
+  .st.bad  { background:var(--badbg); color:var(--bad); }
+  .st.neutral { background:#eef1f6; color:#3b4456; }
+  /* line chips: Pulse lavender code chips */
+  .line { border-radius:6px; font-size:11.5px; letter-spacing:.03em; padding:3px 9px; }
+  .line.LUX { background:var(--chip); color:var(--chip-ink); }
+  .line.MIRROR { background:#dff3ff; color:#0b6a99; }
+  .groups { color:#3b4456; }
+  /* last batch: Pulse stat card with green edge */
+  .last { background:#fff; border:1px solid var(--line); border-left:4px solid #2bae6c; }
+  .last .ttl { color:#3b4456; letter-spacing:.07em; font-weight:800; }
+  .last .rid { color:var(--ink); }
+  .last .sub { color:var(--muted); }
+  /* batch cards get a coloured edge per line */
+  #batch-LUX { border-left:4px solid #7343f8; }
+  #batch-MIRROR { border-left:4px solid #2f6df7; }
+  .result { background:#effaf3; border:1px solid #c6ecd3; }
+  .report { background:#fdf0f1; border:1px solid #f6cdd2; }
+  .dl a { border-radius:6px; font-weight:700; box-shadow:none; }
+  .dl a.zip { background:#2f3da9; } .dl a.print { background:#1b4dea; } .dl a.die { background:#cc0a1c; }
+  .dl a.spot { background:#7343f8; } .dl a.xlsx { background:#2bae6c; }
+  #hFilter, #hSearch { border:1px solid #d6dbe6 !important; border-radius:6px !important; }
 </style>
 </head>
 <body>
-<header>
-  <h1>UV Mix Batch</h1>
+<header class="top">
+  <div class="brand">
+    <img src="/static/mt3-mark.png" alt="MT3">
+    <div><b>UV Mix Batch</b><small>LUX &amp; Mirror bed builder</small></div>
+  </div>
   <nav class="views">
     <button data-view="build" class="on">Build batch</button>
     <button data-view="history">History</button>
   </nav>
   <span class="sp"></span>
-  <span id="who" class="meta"></span>
-  <a href="/logout">Sign out</a>
+  <div class="userpill"><span class="av" id="av">·</span><span id="who"></span><a href="/logout">Sign out</a></div>
 </header>
 <main class="view on" id="view-build">
   <div class="col">
@@ -413,7 +487,7 @@ document.querySelectorAll('nav.views button').forEach(b => b.addEventListener('c
   if (b.dataset.view === 'history') loadHistory(); else if ($('pane-scan').classList.contains('on')) $('scan').focus();
 }));
 
-fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => { if (d) $('who').textContent = d.user; });
+fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => { if (d) { $('who').textContent = d.user; $('av').textContent = (d.user || '?')[0].toUpperCase(); } });
 document.addEventListener('click', e => {
   if ($('view-build').classList.contains('on') && $('pane-scan').classList.contains('on') &&
       !e.target.closest('input,button,a,textarea,label,table,select')) $('scan').focus();
