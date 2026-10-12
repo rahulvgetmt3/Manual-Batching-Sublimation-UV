@@ -28,6 +28,12 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 - [ ] **Team history visible to Rahul:** decide on a shared runs folder (OneDrive, Google Drive or network drive) for the testing period. Otherwise it comes automatically with hosting.
 - [ ] **Rebuild the team ZIP** (`python3 tools/make_team_zip.py`) before giving it to any new PC. The current TEAM zip predates the UTF-8 fix.
 
+**Sublimation (branch `sublimation`)**
+- [ ] Rahul or the team check the sheet PDFs in Illustrator and on the printer: mirroring, centring, names and RGB/CMYK.
+- [ ] Confirm the Excel Reconcile "Model" for Sublimation; it's currently the Pulse model name.
+- [ ] Names use Open Sans because Myriad Pro (used in the team file) isn't available. Confirm that's OK.
+- [ ] Merge into `main` and ship the update ZIP to the teams.
+
 **Known data issues**
 - [ ] **B433C9774F** (Mirror 17-P) returned 403 earlier, then downloaded fine later. Watch for other old printcloud `fetch_url`s.
 
@@ -40,6 +46,16 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 
 ## Log
+
+### 2026-10-12: Sublimation built (branch `sublimation`)
+- Rahul's 9-step brief, plus: Bold and Classic on separate sheets (split by case type), a flip toggle (default mirrored), names as OrderID-Model-CaseType.
+- **Templates:** cleaned from the team's `.ai` files. QR codes are removed, and slots and registration marks are recorded. The SWOP profile is used for RGB/CMYK conversion and is never embedded.
+- **Tested** with real barcodes. Test runs: `SUB_BOLD_6UP_RGB_20261012_02`, `SUB_CLASSIC_6UP-EXT_CMYK_20261012_01`, `SUB_CLASSIC_6UP-EXT_RGB_20261012_01` (2 sheets), `SUB_BOLD_6UP_CMYK_20261012_01` (not flipped).
+- **Housekeeping:** the pending hidden-login change was moved out of `app/` into `dist/pending-admin-login.patch` and `dist/pending-admins.json` (Mac only) so it can't be committed.
+- **Next:**
+  - Rahul checks the sheets in Illustrator and on the printer;
+  - the reconcile "Model" format for Sublimation needs confirming;
+  - when approved, merge `sublimation` into `main` and send the teams an update.
 
 ### 2026-10-11 (end): Mac settings file
 - Added a git-ignored `.env` for Rahul's Mac with the portal login `Rahul`, a fixed SECRET_KEY and COOKIE_SECURE=0. It holds no DB password.
