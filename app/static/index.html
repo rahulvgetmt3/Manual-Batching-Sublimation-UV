@@ -253,7 +253,7 @@ const PROC = {
   sub: { key: 'submix.items.v1', name: 'Sublimation', unit: 'sheet(s)',
         hint: 'Nothing added yet. Scan, paste or upload 6UP (Bold / Classic / Essential) component barcodes. Each family gets its own batch. LUX, Mirror, iPad, Laptop and Kindle are not accepted.' },
 };
-const TPL_NAME = { '6UP': '6UP', '6UP-EXT': '6UP Extended' };
+const TPL_NAME = { '6UP-EXT': '6UP Extended', '6UP': '6UP' };
 const FAMILY_NAME = { BOLD: 'Bold', CLASSIC: 'Classic', ESSENTIAL: 'Essential', OTHER: 'Other' };
 const LINE_NAME = { LUX: 'LUX', MIRROR: 'Mirror', ...TPL_NAME };
 let proc = 'uv';
@@ -267,10 +267,10 @@ const sheetCounts = {};
 const subOpts = {};  // group -> {template, color, mirror}
 
 // group key: UV by line (LUX/MIRROR); Sublimation by family + suggested template (Bold|6UP ...)
-const groupOf = it => proc === 'uv' ? it.line : `${it.family || 'OTHER'}|${it.line}`;
-const groupTitle = g => proc === 'uv' ? (LINE_NAME[g] || g) : `${FAMILY_NAME[g.split('|')[0]] || g} · ${TPL_NAME[g.split('|')[1]] || ''}`;
-const groupClass = g => 'grp-' + (proc === 'uv' ? g : g.split('|')[0]);
-const ORDER = { uv: ['LUX', 'MIRROR'], sub: ['BOLD|6UP', 'BOLD|6UP-EXT', 'CLASSIC|6UP', 'CLASSIC|6UP-EXT', 'ESSENTIAL|6UP', 'ESSENTIAL|6UP-EXT', 'OTHER|6UP', 'OTHER|6UP-EXT'] };
+const groupOf = it => proc === 'uv' ? it.line : (it.family || 'OTHER');
+const groupTitle = g => proc === 'uv' ? (LINE_NAME[g] || g) : (FAMILY_NAME[g] || g);
+const groupClass = g => 'grp-' + g;
+const ORDER = { uv: ['LUX', 'MIRROR'], sub: ['BOLD', 'CLASSIC', 'ESSENTIAL', 'OTHER'] };
 
 function beep(ok) {
   try {
@@ -392,7 +392,7 @@ function groups() {
   return all.filter(g => present.includes(g) || runResults[proc][g]);
 }
 function optsFor(g) {
-  if (!subOpts[g]) subOpts[g] = { template: g.split('|')[1] || '6UP', color: 'RGB', mirror: true };
+  if (!subOpts[g]) subOpts[g] = { template: '6UP-EXT', color: 'CMYK', mirror: true };   // defaults: Extended, CMYK, flipped
   return subOpts[g];
 }
 function subControls(g) {
@@ -404,8 +404,8 @@ function subControls(g) {
       </select></label>
     <label>Export
       <select class="pulse-input" data-opt="color" data-g="${esc(g)}">
-        <option value="RGB" ${o.color === 'RGB' ? 'selected' : ''}>RGB PDF</option>
         <option value="CMYK" ${o.color === 'CMYK' ? 'selected' : ''}>CMYK PDF</option>
+        <option value="RGB" ${o.color === 'RGB' ? 'selected' : ''}>RGB PDF</option>
       </select></label>
     <label>Flip artwork
       <span class="toggle"><input type="checkbox" data-opt="mirror" data-g="${esc(g)}" ${o.mirror ? 'checked' : ''}><span></span></span>
@@ -422,7 +422,7 @@ function render() {
     const sheets = proc === 'sub' ? Math.ceil(list.length / 6) : sheetCounts[g];
     return `<section class="card ${groupClass(g)}" id="batch-${id}">
       <div class="batch-h">
-        ${proc === 'uv' ? lineBadge(g) : famBadge(g.split('|')[0]) + ' ' + lineBadge(g.split('|')[1])}
+        ${proc === 'uv' ? lineBadge(g) : famBadge(g) + ' ' + lineBadge(optsFor(g).template)}
         <h2>${list.length} piece(s)</h2>
         <span class="meta" id="sheets-${id}">${list.length ? (sheets ? sheets + ' ' + PROC[proc].unit : '…') : ''}</span>
         ${attn ? `<span class="cd-badge cd-badge-warning">${attn} need a status check</span>` : ''}

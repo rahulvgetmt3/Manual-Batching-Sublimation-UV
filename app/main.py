@@ -206,8 +206,8 @@ def preview_layout(req: LayoutReq, request: Request):
 class RunReq(BaseModel):
     barcodes: list
     process: str = "uv"
-    template: str = ""     # sublimation: 6UP / 6UP-EXT
-    color: str = "RGB"     # sublimation: RGB / CMYK
+    template: str = "6UP-EXT"  # sublimation: 6UP / 6UP-EXT (default Extended)
+    color: str = "CMYK"        # sublimation: RGB / CMYK (default CMYK)
     mirror: bool = True    # sublimation: flip artwork (default on)
 
 

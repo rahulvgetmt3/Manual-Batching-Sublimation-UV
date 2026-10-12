@@ -80,6 +80,14 @@ def line_and_label(batch_imposition):
     return line, re.sub(r"_AMZ-FBM$", "", rest, flags=re.I)
 
 
+def is_sublimation(family, batch_imposition):
+    """All Bold, Classic and Essential items are sublimation, whatever the model or imposition
+    (e.g. 'Casely-Bold-13/14/15', 'Casely-Bold-16e/17e'), plus anything on a 6up / Sublimation
+    imposition (Rahul, 2026-10-12)."""
+    imp = (batch_imposition or "").lower()
+    return family in ("BOLD", "CLASSIC", "ESSENTIAL") or "6up" in imp or "sublimation" in imp
+
+
 def sub_template(batch_imposition):
     """Sublimation items are the 6UP impositions ('Casely6up_Bold', 'Casely-Bold-6up-Extended',
     '6up_Sublimation', ...). Suggested template: 6UP Extended if the name says Extended, else 6UP."""
@@ -118,13 +126,13 @@ def sub_family(case_type, sku=""):
         return "BOLD"
     if "CLAS" in ct:
         return "CLASSIC"
-    s = f"-{(sku or '').upper()}-"
-    if "-BL-" in s:
-        return "BOLD"
-    if "-CL-" in s:
-        return "CLASSIC"
-    if "-ES-" in s:          # Essential (Tough / Slim) on 6up_Sublimation impositions
+    if "TOUGH" in ct or "SLIM" in ct:   # Essential case types (Tough / Slim, with or without MagSafe)
         return "ESSENTIAL"
+    # SKU fallback: product code right after the brand prefix only (CS-BL-, AM-CL-, CS-FBM-ES-, ES-...),
+    # so e.g. clear generic cases 'CS-GC-IP12-CL-MG' (CL = clear colour) are not taken for Classic.
+    m = re.match(r"^(?:(?:CS|AM)-)?(?:FBM-)?(BL|CL|ES)-", (sku or "").upper())
+    if m:
+        return {"BL": "BOLD", "CL": "CLASSIC", "ES": "ESSENTIAL"}[m.group(1)]
     return "OTHER"
 
 
@@ -139,13 +147,13 @@ def _to_item(row, process="uv"):
         blocked = sub_blocked(row["sku"], row["case_type"], row["batch_imposition"])
         if blocked:
             raise LookupError_(f"{code}: {blocked} is not printed by sublimation ({row['sku']})")
-        line = sub_template(row["batch_imposition"])
-        if not line:
-            raise LookupError_(f"{code}: {row['batch_imposition'] or row['sku']} is not a Sublimation (6UP) item")
+        family = sub_family(row["case_type"], row["sku"])
+        if not is_sublimation(family, row["batch_imposition"]):
+            raise LookupError_(f"{code}: {row['batch_imposition'] or row['sku']} is not a Sublimation item")
+        line = sub_template(row["batch_imposition"]) or "6UP-EXT"
         # side name on the sheet: OrderID-Model-CaseType, e.g. "#4848818-iPhone 17 Pro-BOLD FLEX - BLACK BUMPER"
         label = f"{row['order_number'] or ''}-{row['model'] or ''}-{row['case_type'] or ''}"
         reconcile = row["model"] or ""
-        family = sub_family(row["case_type"], row["sku"])
     else:
         line, label = line_and_label(row["batch_imposition"])
         if not line:

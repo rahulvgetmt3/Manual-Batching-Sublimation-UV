@@ -4,9 +4,10 @@
 Reads the team's Illustrator templates (PDF-compatible .ai) from
 Reference/Sublimation/Sublimation Templates/ and writes to app/templates/sublimation/:
 
-  6UP.pdf, 6UP-EXT.pdf  one-page backgrounds: colour bars, registration marks, TL/BR
-                        and the green slot frames. Removed: the QR codes (15 mm corner
-                        squares) and the hidden sample codes ("MT3-A10..").
+  6UP.pdf, 6UP-EXT.pdf  one-page backgrounds: colour bars, registration marks, TL/BR.
+                        Removed: the green slot frames (positions are kept in templates.json),
+                        the QR codes (15 mm corner squares) and the hidden sample codes
+                        ("MT3-A10..").
   templates.json        page size, the 6 slot frames (pt, PDF origin bottom-left) ordered
                         TL, TR, ML, MR, BL, BR, and the registration-mark y-bands per edge,
                         so the side names can avoid them.
@@ -78,8 +79,9 @@ def clean(page):
                     drop.update(range(start, i + 1))
                 elif 5 <= w <= 9 and 5 <= h <= 9 and (max(xs) < 25 * MM or min(xs) > 293 * MM):
                     marks.append(["L" if max(xs) < 25 * MM else "R", min(ys), max(ys)])
-                elif o in ("S", "s") and 120 <= w <= 140 and 180 <= h <= 230:  # slot frame
+                elif o in ("S", "s") and 120 <= w <= 140 and 180 <= h <= 230:  # green slot frame
                     slots.append([min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)])
+                    drop.update(range(start, i + 1))   # position kept, frame not printed (Rahul)
             pts, start = [], None
         elif o == "BT":
             bt = i

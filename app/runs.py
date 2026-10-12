@@ -122,12 +122,13 @@ def _download_all(items):
         return list(ex.map(_get, items))
 
 
-def create_sub_run(barcodes, template, color, user="", mirror=True):
+def create_sub_run(barcodes, template="6UP-EXT", color="CMYK", user="", mirror=True):
     """Sublimation: one PDF per 6-up sheet in the chosen template, artwork mirrored and centred,
     names beside each piece, artwork exported as RGB or CMYK."""
+    template = template or "6UP-EXT"       # default: 6UP Extended (Rahul)
     if template not in TEMPLATES:
         raise ValueError(f"Unknown template {template!r}")
-    color = (color or "RGB").upper()
+    color = (color or "CMYK").upper()      # default: CMYK (Rahul)
     if color not in ("RGB", "CMYK"):
         raise ValueError("Colour must be RGB or CMYK")
     barcodes = normalise(barcodes)
