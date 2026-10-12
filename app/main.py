@@ -18,7 +18,8 @@ from .importer import parse_text, parse_upload, template_csv, template_xlsx
 from .layout import MM, layout
 from .pulse import LookupError_, lookup_many, normalise
 from .runs import create_run, create_sub_run, list_runs, run_file
-from .sub_build import TEMPLATES as SUB_TEMPLATES
+from . import sub_templates as subt
+import tempfile
 
 MAX_BULK = 2000
 
@@ -256,9 +257,49 @@ def thumb(url: str, request: Request):
 
 @app.get("/api/sub/templates")
 def sub_templates(request: Request):
+    """All Sublimation templates (built-in + uploaded), default first."""
     _require_user(request)
-    return {k: {"title": v["title"], "page_mm": [round(x / 72 * 25.4, 1) for x in v["page"]],
-                "slot_mm": [round(x / 72 * 25.4, 1) for x in v["slots"][0][2:]]} for k, v in SUB_TEMPLATES.items()}
+    reg = subt.registry()
+    keys = sorted(reg, key=lambda k: (k != subt.DEFAULT_TEMPLATE, not reg[k].get("builtin"), k))
+    return {"default": subt.DEFAULT_TEMPLATE, "templates": [subt.summary(reg[k]) for k in keys]}
+
+
+@app.post("/api/sub/templates")
+async def upload_sub_template(request: Request, name: str = Form(...), title: str = Form(""),
+                              file: UploadFile = File(...)):
+    """Upload a dieline (PDF / PDF-compatible .ai, without artwork); slots are detected automatically."""
+    _require_user(request)
+    try:
+        key = subt.safe_key(name)
+    except subt.TemplateError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+    reg = subt.registry()
+    if key in reg and reg[key].get("builtin"):
+        return JSONResponse({"error": f"{key} is a built-in template; choose another name"}, status_code=422)
+    data = await file.read()
+    if len(data) > 200 * 1024 * 1024:
+        return JSONResponse({"error": "File too large (max 200 MB)"}, status_code=422)
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        meta = await run_in_threadpool(subt.process, tmp_path, key, title.strip() or f"Sublimation {key}", subt.USER_DIR)
+    except subt.TemplateError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+    finally:
+        os.unlink(tmp_path)
+    meta.update(builtin=False)
+    return subt.summary(meta)
+
+
+@app.delete("/api/sub/templates/{key}")
+def delete_sub_template(key: str, request: Request):
+    _require_user(request)
+    try:
+        subt.delete(key)
+    except subt.TemplateError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+    return {"ok": True}
 
 
 @app.get("/healthz")

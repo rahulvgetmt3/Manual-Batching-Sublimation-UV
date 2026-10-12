@@ -15,6 +15,11 @@
   .col { display:grid; gap:16px; align-content:start; min-width:0; grid-template-columns:minmax(0,1fr); }
   .col > * { min-width:0; }   /* wide tables scroll inside their card instead of widening the column */
   main > aside { align-self:start; }
+  .tpl-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+  .tpl-card { display:flex; gap:14px; align-items:flex-start; }
+  .tpl-card svg { flex:none; background:#fff; border:1px solid var(--gray-200); border-radius:6px; }
+  .tpl-card h3 { margin:0 0 4px; font-size:15px; }
+  .tpl-card .meta { line-height:1.6; }
   .nordic-table td.wrap { white-space:normal; min-width:220px; max-width:360px; }   /* the right column must not stretch over the batch cards */
   .pane { display:none; } .pane.on { display:block; }
   .scan input { width:100%; font-size:20px; padding:12px 14px; border:2px solid var(--ink); border-radius:10px; letter-spacing:.04em; }
@@ -147,10 +152,11 @@
               </ul>
             </li>
             <li class="top-nav__section">
-              <div class="top-nav__section-label">Sublimation · 6UP</div>
+              <div class="top-nav__section-label">Sublimation</div>
               <ul class="top-nav__section-items">
                 <li><a class="top-nav__dropdown-link" data-proc="sub" data-view="build">Build batch</a></li>
                 <li><a class="top-nav__dropdown-link" data-proc="sub" data-view="history">History</a></li>
+                <li><a class="top-nav__dropdown-link" data-proc="sub" data-view="templates">Templates</a></li>
               </ul>
             </li>
           </ul>
@@ -242,6 +248,23 @@
   </section>
 </main>
 
+<main class="view" id="view-templates" style="grid-template-columns:1fr">
+  <section class="card">
+    <div class="batch-h"><h2>Upload a template</h2></div>
+    <p class="meta" style="margin:6px 0 12px">Upload the team's dieline <b>without artwork</b> (PDF, or .ai saved with "Create PDF Compatible File").
+      Each piece needs one stroked rectangle (like the green frames). Slots, names and what to remove are detected automatically;
+      the frames and QR codes are not printed.</p>
+    <form id="tplForm" class="subopts" style="margin-top:0">
+      <label>Name <input class="pulse-input" name="name" placeholder="e.g. 10UP" required maxlength="24" style="width:120px"></label>
+      <label>Title <input class="pulse-input" name="title" placeholder="e.g. Sublimation 10UP" style="width:220px;font-weight:400"></label>
+      <label>File <input type="file" name="file" accept=".pdf,.ai" required></label>
+      <button class="cd-btn cd-btn-primary" type="submit" id="tplGo">Upload &amp; detect</button>
+    </form>
+    <div id="tplMsg" style="margin-top:10px;font-weight:600"></div>
+  </section>
+  <div id="tplList" class="tpl-grid"></div>
+</main>
+
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -253,9 +276,20 @@ const PROC = {
   sub: { key: 'submix.items.v1', name: 'Sublimation', unit: 'sheet(s)',
         hint: 'Nothing added yet. Scan, paste or upload 6UP (Bold / Classic / Essential) component barcodes. Each family gets its own batch. LUX, Mirror, iPad, Laptop and Kindle are not accepted.' },
 };
-const TPL_NAME = { '6UP-EXT': '6UP Extended', '6UP': '6UP' };
+let TPLS = {}, TPL_ORDER = [], TPL_DEFAULT = '6UP-EXT';
+const TPL_NAME = new Proxy({}, { get: (_, k) => (TPLS[k] ? TPLS[k].title.replace(/^Sublimation\s+/i, '') : k) });
+const perSheet = k => (TPLS[k] ? TPLS[k].slots : 6);
+async function loadTemplates() {
+  try {
+    const r = await fetch('/api/sub/templates'); if (!r.ok) return;
+    const d = await r.json();
+    TPLS = Object.fromEntries(d.templates.map(t => [t.key, t])); TPL_ORDER = d.templates.map(t => t.key); TPL_DEFAULT = d.default;
+    if (proc === 'sub') render();
+    renderTemplates();
+  } catch (e) {}
+}
 const FAMILY_NAME = { BOLD: 'Bold', CLASSIC: 'Classic', ESSENTIAL: 'Essential', OTHER: 'Other' };
-const LINE_NAME = { LUX: 'LUX', MIRROR: 'Mirror', ...TPL_NAME };
+const LINE_NAME = new Proxy({ LUX: 'LUX', MIRROR: 'Mirror' }, { get: (o, k) => o[k] || TPL_NAME[k] });
 let proc = 'uv';
 const store = {};
 function load(p) { try { return JSON.parse(localStorage.getItem(PROC[p].key) || '[]'); } catch (e) { return []; } }
@@ -289,8 +323,8 @@ const TONE = {
 };
 const BADGE = { good: 'cd-badge-success', mid: 'cd-badge-warning', bad: 'cd-badge-error', neutral: 'cd-badge-gray' };
 const chip = (kind, v) => `<span class="cd-badge ${BADGE[TONE[kind][v] || 'neutral']}">${esc(v || '—')}</span>`;
-const LINE_BADGE = { LUX: 'cd-badge-purple', MIRROR: 'cd-badge-info', '6UP': 'cd-badge-cyan', '6UP-EXT': 'cd-badge-cyan' };
-const lineBadge = line => `<span class="cd-badge ${LINE_BADGE[line] || 'cd-badge-gray'}">${esc(LINE_NAME[line] || line)}</span>`;
+const LINE_BADGE = { LUX: 'cd-badge-purple', MIRROR: 'cd-badge-info' };
+const lineBadge = line => `<span class="cd-badge ${LINE_BADGE[line] || 'cd-badge-cyan'}">${esc(LINE_NAME[line] || line)}</span>`;
 const famBadge = f => f ? `<span class="cd-badge ${f === 'BOLD' ? 'cd-badge-purple' : f === 'CLASSIC' ? 'cd-badge-success' : f === 'ESSENTIAL' ? 'cd-badge-cyan' : 'cd-badge-gray'}">${esc(FAMILY_NAME[f] || f)}</span>` : '';
 // Reprints normally sit on orders already shipped/complete, so only flag a non-live job or a dead order.
 const needsAttention = it => it.job_status !== 'live' || ['cancelled', 'error'].includes(it.order_status);
@@ -392,7 +426,7 @@ function groups() {
   return all.filter(g => present.includes(g) || runResults[proc][g]);
 }
 function optsFor(g) {
-  if (!subOpts[g]) subOpts[g] = { template: '6UP-EXT', color: 'CMYK', mirror: true };   // defaults: Extended, CMYK, flipped
+  if (!subOpts[g]) subOpts[g] = { template: TPL_DEFAULT, color: 'CMYK', mirror: true };   // defaults: Extended, CMYK, flipped
   return subOpts[g];
 }
 function subControls(g) {
@@ -400,7 +434,7 @@ function subControls(g) {
   return `<div class="subopts">
     <label>Template
       <select class="pulse-input" data-opt="template" data-g="${esc(g)}">
-        ${Object.entries(TPL_NAME).map(([k, v]) => `<option value="${k}" ${o.template === k ? 'selected' : ''}>${v}</option>`).join('')}
+        ${(TPL_ORDER.length ? TPL_ORDER : [o.template]).map(k => `<option value="${k}" ${o.template === k ? 'selected' : ''}>${esc(TPL_NAME[k])} (${perSheet(k)} per sheet)</option>`).join('')}
       </select></label>
     <label>Export
       <select class="pulse-input" data-opt="color" data-g="${esc(g)}">
@@ -419,7 +453,7 @@ function render() {
     list.forEach(it => { const k = proc === 'uv' ? it.label : it.model; counts[k] = (counts[k] || 0) + 1; });
     const attn = list.filter(needsAttention).length;
     const id = gid(g);
-    const sheets = proc === 'sub' ? Math.ceil(list.length / 6) : sheetCounts[g];
+    const sheets = proc === 'sub' ? Math.ceil(list.length / perSheet(optsFor(g).template)) : sheetCounts[g];
     return `<section class="card ${groupClass(g)}" id="batch-${id}">
       <div class="batch-h">
         ${proc === 'uv' ? lineBadge(g) : famBadge(g) + ' ' + lineBadge(optsFor(g).template)}
@@ -436,7 +470,7 @@ function render() {
         <thead><tr><th>#</th><th></th><th>${proc === 'uv' ? 'Model' : 'Name on sheet'}</th><th>Print code</th><th>Batch</th><th>Order</th><th>Component</th><th>Size mm</th><th>Status (Pulse)</th><th></th></tr></thead>
         <tbody>${list.map((it, i) => `
           <tr class="${needsAttention(it) ? 'attn' : ''}">
-            <td>${proc === 'sub' ? `S${Math.floor(i / 6) + 1}-${i % 6 + 1}` : i + 1}</td>
+            <td>${proc === 'sub' ? `S${Math.floor(i / perSheet(optsFor(g).template)) + 1}-${i % perSheet(optsFor(g).template) + 1}` : i + 1}</td>
             <td><img loading="lazy" src="/api/thumb?url=${encodeURIComponent(it.fetch_url)}" alt=""></td>
             <td class="${proc === 'sub' ? 'wrap' : ''}"><div class="lbl" ${proc === 'sub' ? 'style="font-size:13px"' : ''}>${esc(it.label)}</div><small>${esc(proc === 'uv' ? it.model : it.batch_imposition)}</small></td>
             <td class="mono">${esc(it.print_code)}<br><small>${esc(it.print_sku)}</small></td>
@@ -546,7 +580,7 @@ function renderHistory() {
 }
 function historyFilters() {
   const opts = proc === 'uv' ? [['LUX', 'LUX'], ['MIRROR', 'Mirror']]
-    : [['BOLD', 'Bold'], ['CLASSIC', 'Classic'], ['ESSENTIAL', 'Essential'], ['6UP', '6UP'], ['6UP-EXT', '6UP Extended']];
+    : [['BOLD', 'Bold'], ['CLASSIC', 'Classic'], ['ESSENTIAL', 'Essential'], ...TPL_ORDER.map(k => [k, TPL_NAME[k]])];
   $('hFilter').innerHTML = '<option value="">All</option>' + opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
 }
 $('hFilter').addEventListener('change', renderHistory);
@@ -570,8 +604,9 @@ const PAGES = {
     history: ['UV Mix · History', 'Every generated UV batch with its File, Die, Spot PDFs and Excel.'],
   },
   sub: {
-    build: ['Sublimation · Build batch', 'Scan, paste or upload 6UP component barcodes → mirrored sheets on the 6UP / 6UP Extended template (RGB or CMYK) + Excel.'],
+    build: ['Sublimation · Build batch', 'Scan, paste or upload Bold / Classic / Essential component barcodes → mirrored sheets on any template (CMYK or RGB) + Excel.'],
     history: ['Sublimation · History', 'Every generated Sublimation batch with its sheet PDFs and Excel.'],
+    templates: ['Sublimation · Templates', 'Sheet templates (1UP, 6UP, 10UP, ...). Upload a dieline; it becomes available in every batch.'],
   },
 };
 function showView(view, p) {
@@ -585,6 +620,7 @@ function showView(view, p) {
   $('pageTitle').textContent = PAGES[proc][view][0]; $('pageSub').textContent = PAGES[proc][view][1];
   try { localStorage.setItem('mb.view', JSON.stringify([view, proc])); } catch (e) {}
   loadHistory();
+  if (view === 'templates') loadTemplates();
   if (view === 'build' && $('pane-scan').classList.contains('on')) $('scan').focus();
 }
 function toggleMenu(btn, menu, open) {
@@ -604,7 +640,55 @@ document.addEventListener('click', e => {
   if ($('view-build').classList.contains('on') && $('pane-scan').classList.contains('on') &&
       !e.target.closest('input,button,a,textarea,label,table,select')) $('scan').focus();
 });
+// ---- templates page ----
+function tplSvg(t, H = 150) {
+  const [pw, ph] = t.layout.page, k = H / ph, W = Math.max(40, pw * k);
+  const slots = t.layout.slots.map((s, i) => {
+    const x = s[0] * k, y = (ph - s[1] - s[3]) * k, w = s[2] * k, h = s[3] * k;
+    const nm = t.layout.names[i];
+    const nx = nm ? nm.x * k - 2 : null;
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#eef2ff" stroke="#667eea" stroke-width="1"/>
+      <text x="${x + w / 2}" y="${y + h / 2 + 4}" font-size="${Math.max(8, Math.min(14, w / 3))}" text-anchor="middle" fill="#4338ca">${i + 1}</text>
+      ${nm ? `<line x1="${nx}" y1="${y + h * 0.2}" x2="${nx}" y2="${y + h * 0.8}" stroke="#334155" stroke-width="1.5"/>` : ''}`;
+  }).join('');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="#fff" stroke="#cbd5e1"/>${slots}</svg>`;
+}
+function renderTemplates() {
+  const el = $('tplList'); if (!el) return;
+  el.innerHTML = TPL_ORDER.map(k => { const t = TPLS[k]; return `<section class="card tpl-card">
+      ${tplSvg(t)}
+      <div>
+        <h3>${esc(t.title)}</h3>
+        <div>${t.builtin ? '<span class="cd-badge cd-badge-gray">built-in</span>' : '<span class="cd-badge cd-badge-info">uploaded</span>'}
+             ${k === TPL_DEFAULT ? '<span class="cd-badge cd-badge-success">default</span>' : ''}</div>
+        <div class="meta">Key <b class="mono">${esc(k)}</b><br>${t.slots} per sheet<br>Sheet ${t.page_mm[0]} × ${t.page_mm[1]} mm<br>Slot ${t.slot_mm[0]} × ${t.slot_mm[1]} mm
+          ${t.removed && (t.removed.qr || t.removed.frames) ? `<br><small>Not printed: ${t.removed.frames || 0} frames${t.removed.qr ? `, ${t.removed.qr} QR` : ''}</small>` : ''}</div>
+        ${t.builtin ? '' : `<button class="cd-btn cd-btn-secondary cd-btn-sm" data-deltpl="${esc(k)}" style="margin-top:8px">Delete</button>`}
+      </div></section>`; }).join('');
+}
+$('tplForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target); $('tplGo').disabled = true; $('tplMsg').textContent = 'Uploading and detecting slots…'; $('tplMsg').style.color = '';
+  try {
+    const r = await fetch('/api/sub/templates', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Upload failed');
+    $('tplMsg').textContent = `✓ ${d.title}: ${d.slots} slot(s) detected, sheet ${d.page_mm[0]} × ${d.page_mm[1]} mm, slot ${d.slot_mm[0]} × ${d.slot_mm[1]} mm. Check the diagram below.`;
+    $('tplMsg').style.color = 'var(--color-success)'; e.target.reset(); await loadTemplates();
+  } catch (err) { $('tplMsg').textContent = err.message; $('tplMsg').style.color = 'var(--color-error)'; }
+  finally { $('tplGo').disabled = false; }
+});
+$('tplList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-deltpl]'); if (!b) return;
+  if (!confirm(`Delete template ${b.dataset.deltpl}? Existing batches keep their PDFs.`)) return;
+  const r = await fetch('/api/sub/templates/' + encodeURIComponent(b.dataset.deltpl), { method: 'DELETE' });
+  const d = await r.json(); if (!r.ok) { alert(d.error || 'Delete failed'); return; }
+  Object.keys(subOpts).forEach(g => { if (subOpts[g].template === b.dataset.deltpl) subOpts[g].template = TPL_DEFAULT; });
+  loadTemplates();
+});
+
 historyFilters();
+loadTemplates();
 let start = ['build', 'uv'];
 try { start = JSON.parse(localStorage.getItem('mb.view') || 'null') || start; } catch (e) {}
 showView(start[0], start[1]);

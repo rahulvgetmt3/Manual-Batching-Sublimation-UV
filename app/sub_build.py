@@ -19,35 +19,29 @@ Rules (agreed with Rahul, 2026-10-12):
 """
 
 import io
-import json
 import zlib
-from pathlib import Path
 
 import pikepdf
 from pikepdf import Array, Dictionary, Name
 from PIL import Image, ImageCms
 
 from .pdf_build import _GLYPHS, _CMAP, _UPM, _PdfPathPen, _image_xobject
+from .sub_templates import BUILTIN_DIR, registry
 
 Image.MAX_IMAGE_PIXELS = None
 
-TPL_DIR = Path(__file__).resolve().parent / "templates" / "sublimation"
-TEMPLATES = json.loads((TPL_DIR / "templates.json").read_text(encoding="utf-8"))
-SLOTS_PER_SHEET = 6
 MM = 72 / 25.4
 NAME_SIZE = 15.08            # pt, as in the team's reference
-NAME_X_LEFT = 12.3 * MM      # baseline x for left-column names (reference)
-NAME_X_RIGHT = 310.3 * MM    # baseline x for right-column names (reference)
 NAME_MARGIN = 6 * MM         # keep names this far inside the slot height
 
 _SRGB = ImageCms.createProfile("sRGB")
-_SWOP = ImageCms.ImageCmsProfile(str(TPL_DIR / "swop.icc"))
+_SWOP = ImageCms.ImageCmsProfile(str(BUILTIN_DIR / "swop.icc"))
 _FLAGS = ImageCms.Flags.BLACKPOINTCOMPENSATION
 _INTENT = ImageCms.Intent.RELATIVE_COLORIMETRIC
 
 
-def template_title(key):
-    return TEMPLATES[key]["title"]
+def slots_per_sheet(template):
+    return len(registry()[template]["slots"])
 
 
 def image_mode(path):
@@ -128,10 +122,10 @@ def _name_outline(text, x_baseline, slot_y0, slot_y1):
 
 
 def build_sheet(template, color, pieces, out_path, title, mirror=True):
-    """pieces: up to 6 dicts {path, w_pt, h_pt, name}; written in slot order TL..BR.
-    Returns a list of warnings (artwork larger than its slot)."""
-    tpl = TEMPLATES[template]
-    src = pikepdf.open(TPL_DIR / f"{template}.pdf")
+    """pieces: up to one per slot, dicts {path, w_pt, h_pt, name}; filled in slot order
+    (top row first, left to right). Returns a list of warnings (artwork larger than its slot)."""
+    tpl = registry()[template]
+    src = pikepdf.open(tpl["pdf"])
     pdf = pikepdf.new()
     pdf.pages.append(src.pages[0])
     if "/OCProperties" in src.Root:
@@ -144,7 +138,7 @@ def build_sheet(template, color, pieces, out_path, title, mirror=True):
     if Name.XObject not in res:
         res.XObject = Dictionary()
     ops, warnings, cache = ["0 0 0 1 k"], [], {}
-    for i, pc in enumerate(pieces[:SLOTS_PER_SHEET]):
+    for i, pc in enumerate(pieces[:len(tpl["slots"])]):
         sx, sy, sw, sh = tpl["slots"][i]
         key = str(pc["path"])
         if key not in cache:
@@ -162,9 +156,7 @@ def build_sheet(template, color, pieces, out_path, title, mirror=True):
             ops.append(f"q {-w:.4f} 0 0 {h:.4f} {x0 + w:.4f} {y0:.4f} cm /{name} Do Q")
         else:
             ops.append(f"q {w:.4f} 0 0 {h:.4f} {x0:.4f} {y0:.4f} cm /{name} Do Q")
-        side = "L" if i % 2 == 0 else "R"
-        x_base = NAME_X_LEFT if side == "L" else NAME_X_RIGHT
-        ops.append(_name_outline(pc["name"], x_base, sy, sy + sh))
+        ops.append(_name_outline(pc["name"], tpl["names"][i]["x"], sy, sy + sh))
     page.contents_add(pdf.make_stream(("\n".join(ops)).encode("latin-1")), prepend=False)
     pdf.save(out_path, min_version="1.6")
     return warnings

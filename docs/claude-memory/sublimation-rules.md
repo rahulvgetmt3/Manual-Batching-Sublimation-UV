@@ -46,3 +46,14 @@ metadata:
 **Status:** built and tested on Rahul's Mac with real Pulse barcodes (Bold 6UP, Classic 6UP-EXT, RGB/CMYK, flipped and not, 2-sheet runs). **Not yet print-tested by the team or checked in Illustrator/RIP.**
 
 Related: [[uv-mix-portal-overview]], [[pulse-design-system]], [[uv-mix-team-requirements]].
+
+**Any-size templates (2026-10-12):** Rahul said "we have 1UP, 10UP etc.; make the system free to upload any size template; test only 6UP for now."
+- **Logic:** `app/sub_templates.py` is shared by the portal upload and `tools/build_sub_templates.py`.
+  - **Slots** = the most common stroked rectangle size (at least 20 × 20 mm), ordered by row then column.
+  - **Removed:** the frames, 13–17 mm QR squares and "MT3-A" sample text.
+  - **Name side:** the left half of the columns go left, the right half go right, each in the middle of the margin or gap. The built-in 6UP templates use the reference 12.3 / 310.3 mm. Auto-detection on 6UP gave 13.9 / 307.9 mm, which is close.
+- **Storage:** built-ins (6UP, 6UP-EXT) in `app/templates/sublimation/<KEY>.pdf|json`. Uploads in `data/templates/sublimation/` (TEMPLATES_DIR).
+- **API:** GET/POST `/api/sub/templates`, DELETE `/api/sub/templates/{key}`. Built-ins can't be deleted or overwritten.
+- **Runs:** pieces per sheet = the template's slot count. Run id `SUB_<FAMILY>_<KEY>_<COLOR>_<date>_NN`. An over-size artwork gives a warning per slot.
+- **UI:** Manual Batching ▾ › Sublimation › **Templates** has the upload form plus cards with an SVG slot diagram. The batch Template dropdown lists every template with "(N per sheet)", and 6UP Extended is the default.
+- **Tested** with synthetic 10UP (2 × 5) and 1UP dielines and the real 6UP `.ai` re-uploaded. The test templates were deleted afterwards. **Only 6UP is to be tested by the team for now.**

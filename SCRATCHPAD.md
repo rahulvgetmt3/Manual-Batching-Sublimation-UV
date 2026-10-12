@@ -46,6 +46,11 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-12: Any-size Sublimation templates
+- Templates can now be uploaded in the portal (Manual Batching ▾ › Sublimation › Templates). Slots, name sides, and frame and QR removal are detected automatically, and pieces per sheet follow the template.
+- Also: all Bold, Classic and Essential models are included (Casely-Bold-13/14/15, Casely-Bold-16e/17e, 4_Sublimation); green frames aren't printed; the defaults are 6UP Extended and CMYK.
+- **The team tests only 6UP for now.** 1UP, 10UP and others are uploaded when needed.
+
 ### 2026-10-12: Sublimation built (branch `sublimation`)
 - Rahul's 9-step brief, plus: Bold and Classic on separate sheets (split by case type), a flip toggle (default mirrored), names as OrderID-Model-CaseType.
 - **Templates:** cleaned from the team's `.ai` files. QR codes are removed, and slots and registration marks are recorded. The SWOP profile is used for RGB/CMYK conversion and is never embedded.

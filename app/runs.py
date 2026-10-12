@@ -15,7 +15,8 @@ from .manifest import write_manifest
 from .pdf_build import build_pdfs
 from .spot_pdf import build_spot_pdf
 from .pulse import lookup_many, normalise
-from .sub_build import SLOTS_PER_SHEET, TEMPLATES, build_sheet, image_mode
+from .sub_build import build_sheet, image_mode
+from .sub_templates import DEFAULT_TEMPLATE, registry
 
 RUNS_DIR = Path(os.environ.get("RUNS_DIR", Path(__file__).resolve().parent.parent / "data" / "runs"))
 
@@ -24,7 +25,7 @@ def _safe(s):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
 
 
-RUN_ID_RE = re.compile(r"(UV_[A-Z]+|SUB_(BOLD|CLASSIC|ESSENTIAL|OTHER)_6UP(-EXT)?_(RGB|CMYK))_\d{8}_\d+")
+RUN_ID_RE = re.compile(r"(UV_[A-Z]+|SUB_(BOLD|CLASSIC|ESSENTIAL|OTHER)_[A-Z0-9-]{1,24}_(RGB|CMYK))_\d{8}_\d+")
 
 
 def _claim_run_dir(line, prefix="UV"):
@@ -122,12 +123,14 @@ def _download_all(items):
         return list(ex.map(_get, items))
 
 
-def create_sub_run(barcodes, template="6UP-EXT", color="CMYK", user="", mirror=True):
+def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True):
     """Sublimation: one PDF per 6-up sheet in the chosen template, artwork mirrored and centred,
     names beside each piece, artwork exported as RGB or CMYK."""
-    template = template or "6UP-EXT"       # default: 6UP Extended (Rahul)
-    if template not in TEMPLATES:
+    template = template or DEFAULT_TEMPLATE  # default: 6UP Extended (Rahul)
+    templates = registry()
+    if template not in templates:
         raise ValueError(f"Unknown template {template!r}")
+    per_sheet = len(templates[template]["slots"])
     color = (color or "CMYK").upper()      # default: CMYK (Rahul)
     if color not in ("RGB", "CMYK"):
         raise ValueError("Colour must be RGB or CMYK")
@@ -149,16 +152,16 @@ def create_sub_run(barcodes, template="6UP-EXT", color="CMYK", user="", mirror=T
         info = image_info(path)
         pieces.append({"path": path, "w_pt": info["w_pt"], "h_pt": info["h_pt"], "name": it.label,
                        "src_mode": image_mode(path)})
-        placements.append(Placement(index=i, sheet=i // SLOTS_PER_SHEET + 1, position=i % SLOTS_PER_SHEET + 1,
+        placements.append(Placement(index=i, sheet=i // per_sheet + 1, position=i % per_sheet + 1,
                                     x=0, y=0, w=info["w_pt"], h=info["h_pt"]))
 
     run_id = _claim_run_dir(f"{family}_{template}_{color}", prefix="SUB")
     out = RUNS_DIR / run_id
     (out / "files").mkdir()
-    sheets = (len(pieces) + SLOTS_PER_SHEET - 1) // SLOTS_PER_SHEET
+    sheets = (len(pieces) + per_sheet - 1) // per_sheet
     sheet_pdfs, warnings = [], []
     for s in range(sheets):
-        chunk = pieces[s * SLOTS_PER_SHEET:(s + 1) * SLOTS_PER_SHEET]
+        chunk = pieces[s * per_sheet:(s + 1) * per_sheet]
         pdf_path = out / f"{run_id}_S{s + 1}.pdf"
         for w in build_sheet(template, color, chunk, pdf_path, pdf_path.stem, mirror=mirror):
             warnings.append(f"sheet {s + 1} {w}")
@@ -178,6 +181,8 @@ def create_sub_run(barcodes, template="6UP-EXT", color="CMYK", user="", mirror=T
         "line": template,
         "family": family,
         "template": template,
+        "template_title": templates[template]["title"],
+        "per_sheet": per_sheet,
         "color": color,
         "mirror": bool(mirror),
         "created": dt.datetime.now().isoformat(timespec="seconds"),
