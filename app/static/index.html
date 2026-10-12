@@ -636,7 +636,12 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#userMenu, #userBtn')) $('userMenu').hidden = true;
 });
 
-fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => { if (d) { $('who').textContent = d.user; $('who2').textContent = d.user; $('av').textContent = (d.user || '?')[0].toUpperCase(); } });
+fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => {
+  if (!d) return;
+  $('who').textContent = d.user; $('who2').textContent = d.user; $('av').textContent = (d.user || '?')[0].toUpperCase();
+  let saved = null; try { saved = localStorage.getItem('mb.view'); } catch (e) {}
+  if (!saved && d.default_process && d.default_process !== proc) showView('build', d.default_process);   // team's home page
+});
 document.addEventListener('click', e => {
   if ($('view-build').classList.contains('on') && $('pane-scan').classList.contains('on') &&
       !e.target.closest('input,button,a,textarea,label,table,select')) $('scan').focus();

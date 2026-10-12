@@ -1,5 +1,5 @@
-# UV Mix Batch - start the portal on this PC (http://localhost:8765).
-# Run by double-clicking "Start UV Mix.bat" in the main folder. Keep the window open while working.
+# Manual Batching (UV Mix + Sublimation) - start the portal on this PC (http://localhost:8765).
+# Run by double-clicking "Start Manual Batching.bat" in the main folder. Keep the window open while working.
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
@@ -30,7 +30,7 @@ if (-not $env:SECRET_KEY) {
 
 $port = 8765
 Write-Host ""
-Write-Host "=== UV Mix Batch is running ===" -ForegroundColor Green
+Write-Host "=== Manual Batching is running ===" -ForegroundColor Green
 Write-Host "Open: http://localhost:$port   (opening your browser now)"
 Write-Host "Keep this window open. Close it to stop the portal."
 Write-Host "Batches are saved in: $Root\data\runs"

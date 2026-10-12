@@ -91,7 +91,8 @@ def index(request: Request):
 
 @app.get("/api/me")
 def me(request: Request):
-    return {"user": _require_user(request)}
+    # DEFAULT_PROCESS (uv|sub) picks the page a fresh browser opens on, e.g. 'sub' for the Sublimation team
+    return {"user": _require_user(request), "default_process": _process(os.environ.get("DEFAULT_PROCESS", "uv"))}
 
 
 def _process(p):

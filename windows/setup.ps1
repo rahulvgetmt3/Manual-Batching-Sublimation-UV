@@ -1,4 +1,4 @@
-# UV Mix Batch - one-time setup on a Windows PC.
+# Manual Batching (UV Mix + Sublimation) - one-time setup on a Windows PC.
 # Run by double-clicking "Setup.bat" in the main folder.
 
 $ErrorActionPreference = "Stop"
@@ -6,7 +6,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
 Write-Host ""
-Write-Host "=== UV Mix Batch setup ===" -ForegroundColor Cyan
+Write-Host "=== Manual Batching setup ===" -ForegroundColor Cyan
 
 # 1. Find Python 3.10 - 3.13 (prefer 3.12)
 $python = $null
@@ -54,5 +54,5 @@ Write-Host "Checking connection to Pulse..."
 & ".venv\Scripts\python.exe" "windows\check_db.py"
 
 Write-Host ""
-Write-Host "Setup finished. Start the portal with 'Start UV Mix.bat'." -ForegroundColor Green
+Write-Host "Setup finished. Start the portal with 'Start Manual Batching.bat'." -ForegroundColor Green
 Read-Host "Press Enter to close"
