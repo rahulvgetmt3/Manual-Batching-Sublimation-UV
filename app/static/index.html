@@ -4,30 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UV Mix Batch</title>
+<link rel="stylesheet" href="/static/pulse-shell.css">
 <style>
   :root { --bg:#f4f5f7; --card:#fff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
           --ok:#047857; --okbg:#ecfdf5; --warn:#b45309; --warnbg:#fffbeb; --bad:#b91c1c; --badbg:#fef2f2;
           --info:#1d4ed8; --infobg:#eff6ff; --accent:#111827; --lux:#7c3aed; --luxbg:#f5f3ff; --mir:#0e7490; --mirbg:#ecfeff; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  header { display:flex; align-items:center; gap:16px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--line); }
-  header h1 { font-size:16px; margin:0; }
-  header .sp { flex:1; }
-  header a { color:var(--muted); text-decoration:none; font-size:13px; }
   main { max-width:1400px; margin:0 auto; padding:20px 16px 60px; display:grid; gap:16px; grid-template-columns: minmax(0,1fr) 300px; }
   @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
   .col { display:grid; gap:16px; align-content:start; min-width:0; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0; }
-  .tabs { display:flex; gap:4px; margin-bottom:12px; border-bottom:1px solid var(--line); }
-  .tabs button { border:0; background:none; padding:8px 14px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
-  .tabs button.on { color:var(--ink); border-bottom-color:var(--ink); }
   .pane { display:none; } .pane.on { display:block; }
   .scan input { width:100%; font-size:20px; padding:12px 14px; border:2px solid var(--ink); border-radius:10px; letter-spacing:.04em; }
   textarea { width:100%; min-height:130px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font:13px ui-monospace, Menlo, Consolas, monospace; resize:vertical; }
   .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
-  .btn { padding:9px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; font-size:14px; }
-  .btn:disabled { opacity:.4; cursor:not-allowed; }
-  .btn.light { background:#fff; color:var(--ink); border:1px solid var(--line); }
   .hint { color:var(--muted); font-size:12px; }
   .hint a { color:var(--info); }
   .drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; width:100%;
@@ -44,21 +33,8 @@
            color:var(--ink); text-decoration:none; font-weight:600; background:#fff; }
   .tpl a:hover { background:#f3f4f6; }
   /* top-level views */
-  nav.views { display:flex; gap:4px; margin-left:12px; }
-  nav.views button { border:0; background:none; padding:7px 14px; border-radius:8px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; }
-  nav.views button.on { background:var(--ink); color:#fff; }
   .view { display:none; } .view.on { display:grid; }
   /* download buttons */
-  .dl { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-  .dl a { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-weight:700; font-size:13px;
-          text-decoration:none; color:#fff; box-shadow:0 1px 2px rgba(0,0,0,.12); }
-  .dl a:hover { filter:brightness(1.1); }
-  .dl a.zip { background:#111827; } .dl a.print { background:#2563eb; } .dl a.die { background:#dc2626; } .dl a.spot { background:#7c3aed; } .dl a.xlsx { background:#15803d; }
-  .dl.sm a { padding:5px 10px; font-size:12px; }
-  .last { background:var(--okbg); border:1px solid #a7f3d0; }
-  .last .ttl { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ok); font-weight:700; }
-  .last .rid { font-size:16px; font-weight:800; margin:4px 0 2px; word-break:break-all; }
-  .last .sub { font-size:13px; color:#065f46; }
   .htable td, .htable th { white-space:nowrap; }
   #msg { min-height:22px; margin-top:10px; font-weight:600; }
   #msg.bad { color:var(--bad); } #msg.ok { color:var(--ok); } #msg.warn { color:var(--warn); }
@@ -95,106 +71,113 @@
   .hist small { color:var(--muted); display:block; }
   .empty { color:var(--muted); text-align:center; padding:22px 0; }
 
-  /* ===== Pulse theme (matches pulse.getmt3.com) ===== */
-  :root { --bg:#f2f4f9; --card:#fff; --ink:#0d1220; --muted:#6f7b8f; --line:#e6e9f0;
-          --primary:#1b4dea; --primary-d:#1740c4; --indigo:#2f3da9;
-          --ok:#15803d; --okbg:#d7fce0; --warn:#c2410c; --warnbg:#fff1dc; --bad:#cc0a1c; --badbg:#fde8ea;
-          --chip:#e8e3ff; --chip-ink:#5b3fb3; --accent:var(--primary); }
-  body { font:14px/1.45 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:var(--bg); }
-  header.top { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:22px; padding:10px 24px;
-               background:linear-gradient(90deg,#5266e4 0%,#5657cb 35%,#5a47ae 70%,#5f3894 100%); border:0; color:#fff;
-               box-shadow:0 2px 8px rgba(40,30,110,.18); }
-  header.top .brand { display:flex; align-items:center; gap:14px; }
-  header.top .brand img { height:34px; display:block; }
-  header.top .brand b { display:block; font-size:16px; font-weight:700; letter-spacing:.01em; }
-  header.top .brand small { display:block; font-size:12px; opacity:.85; }
-  nav.views { margin-left:10px; gap:6px; }
-  nav.views button { color:#e6e8ff; font-weight:500; padding:8px 14px; border-radius:8px; }
-  nav.views button:hover { background:rgba(255,255,255,.12); }
-  nav.views button.on { background:rgba(255,255,255,.22); color:#fff; }
-  .userpill { display:flex; align-items:center; gap:10px; padding:6px 14px 6px 6px; border-radius:10px;
-              background:rgba(255,255,255,.16); color:#fff; font-weight:500; }
-  .userpill .av { width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.28); display:grid; place-items:center; font-weight:700; font-size:13px; }
-  .userpill a { color:#e6e8ff; font-size:12px; text-decoration:none; margin-left:6px; opacity:.9; }
-  .userpill a:hover { opacity:1; text-decoration:underline; }
-  main { max-width:1500px; padding:22px 24px 60px; }
-  .card { border:1px solid var(--line); border-radius:10px; box-shadow:0 1px 2px rgba(16,24,40,.04); }
-  /* input tabs: Pulse pill tabs */
-  .tabs { border:0; gap:6px; margin-bottom:14px; }
-  .tabs button { border:0; margin:0; padding:7px 16px; border-radius:7px; color:#3b4456; font-weight:600; }
-  .tabs button:hover { background:#eef1f8; }
-  .tabs button.on { background:var(--primary); color:#fff; }
-  .scan input { border:2px solid #c9d3f7; border-radius:10px; font-size:19px; }
-  .scan input:focus, textarea:focus { outline:0; border-color:var(--primary); box-shadow:0 0 0 3px rgba(27,77,234,.12); }
-  textarea { border-color:#d6dbe6; }
-  .btn { background:var(--primary); border-radius:6px; font-weight:600; }
-  .btn:hover:not(:disabled) { background:var(--primary-d); }
-  .btn.light { background:#fff; color:var(--ink); border:1px solid #d6dbe6; }
-  .btn.light:hover:not(:disabled) { background:#f5f7fb; }
-  .drop { background:#fafbff; border-color:#c9d3f7; }
+  /* ---- bridge: map this page onto Pulse tokens (pulse-shell.css) ---- */
+  :root { --bg:var(--bg-page); --card:#fff; --ink:var(--gray-900); --muted:var(--gray-500); --line:var(--nordic-border);
+          --accent:var(--primary); --info:var(--primary); --infobg:#eef2ff; }
+  body { color:var(--text-primary); font-size:14px; line-height:1.45; }
+  .page-head { max-width:1500px; margin:0 auto; padding:22px 24px 0; }
+  .page-head .cd-page-header { margin-bottom:0; }
+  main { max-width:1500px; padding:16px 24px 60px; }
+  .card { border-radius:var(--nordic-radius); border:1px solid var(--gray-200); background:#fff; padding:20px; min-width:0; box-shadow:0 1px 3px #0000000a; }
+  .tabs { margin-bottom:14px; }
+  .scan input { border:1px solid var(--gray-300); border-radius:8px; font-size:18px; font-family:inherit; }
+  .scan input:focus, textarea:focus, #hSearch:focus, #hFilter:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px #667eea1a; }
+  textarea { border-color:var(--gray-300); border-radius:8px; }
+  .drop { background:var(--gray-50); border-color:var(--gray-300); }
   .drop.over { border-color:var(--primary); background:#eef2ff; }
-  .tpl a { border-color:#d6dbe6; border-radius:6px; }
-  /* tables like Pulse */
-  th { color:#3b4456; font-weight:700; font-size:11.5px; letter-spacing:.05em; background:#f8f9fc; padding:10px 8px; }
-  td { padding:9px 8px; }
-  th, td { border-bottom:1px solid var(--line); }
-  tbody tr:hover td { background:#fafbff; }
-  tr.attn td { background:#fff7ec; }
-  .mono { font-family:"SF Mono", ui-monospace, Menlo, Consolas, monospace; }
-  /* status badges: Pulse DONE / DRAFT style */
-  .st { text-transform:uppercase; letter-spacing:.04em; font-size:10.5px; font-weight:800; padding:3px 8px; border-radius:6px; }
-  .st.good { background:var(--okbg); color:var(--ok); }
-  .st.mid  { background:var(--warnbg); color:var(--warn); }
-  .st.bad  { background:var(--badbg); color:var(--bad); }
-  .st.neutral { background:#eef1f6; color:#3b4456; }
-  /* line chips: Pulse lavender code chips */
-  .line { border-radius:6px; font-size:11.5px; letter-spacing:.03em; padding:3px 9px; }
-  .line.LUX { background:var(--chip); color:var(--chip-ink); }
-  .line.MIRROR { background:#dff3ff; color:#0b6a99; }
-  .groups { color:#3b4456; }
-  /* last batch: Pulse stat card with green edge */
-  .last { background:#fff; border:1px solid var(--line); border-left:4px solid #2bae6c; }
-  .last .ttl { color:#3b4456; letter-spacing:.07em; font-weight:800; }
-  .last .rid { color:var(--ink); }
-  .last .sub { color:var(--muted); }
-  /* batch cards get a coloured edge per line */
-  #batch-LUX { border-left:4px solid #7343f8; }
-  #batch-MIRROR { border-left:4px solid #2f6df7; }
-  .result { background:#effaf3; border:1px solid #c6ecd3; }
-  .report { background:#fdf0f1; border:1px solid #f6cdd2; }
-  .dl a { border-radius:6px; font-weight:700; box-shadow:none; }
-  .dl a.zip { background:#2f3da9; } .dl a.print { background:#1b4dea; } .dl a.die { background:#cc0a1c; }
-  .dl a.spot { background:#7343f8; } .dl a.xlsx { background:#2bae6c; }
-  #hFilter, #hSearch { border:1px solid #d6dbe6 !important; border-radius:6px !important; }
+  .tpl a { border-color:var(--gray-300); border-radius:6px; color:var(--gray-700); }
+  .nordic-table-container { margin-top:12px; }
+  .nordic-table { margin-top:0; }
+  tr.attn td { background:#fffbeb; }
+  #batch-LUX { border-left:4px solid var(--secondary); }
+  #batch-MIRROR { border-left:4px solid var(--info-light); border-left-color:var(--color-info); }
+  .last { cursor:default; }
+  .last:hover { transform:none; box-shadow:none; }
+  .last .cd-kpi-value { font-size:18px; margin-top:4px; white-space:normal; word-break:break-all; }
+  .dl { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .dl a { color:#fff; text-decoration:none; }
+  .dl a.zip { background:var(--gradient); } .dl a.print { background:var(--color-info); } .dl a.die { background:var(--error); }
+  .dl a.spot { background:var(--secondary); } .dl a.xlsx { background:var(--success); }
+  .pulse-input { height:34px; border:1px solid var(--gray-200); border-radius:8px; padding:0 12px; font:600 13px inherit; font-family:inherit; color:var(--gray-700); background:#fff; }
+  .top-nav__dropdown-link { cursor:pointer; }
+  .top-nav__dropdown-link.is-disabled { opacity:.55; cursor:default; }
+  .top-nav__dropdown-link.is-disabled:hover { background:none; color:#374151; }
+  .top-nav__item .top-nav__dropdown[hidden], .app-header-menu__dropdown[hidden] { display:none; }
+  .app-header-menu__user-btn { color:#fff; font-family:inherit; }
 </style>
 </head>
 <body>
-<header class="top">
-  <div class="brand">
-    <img src="/static/mt3-mark.png" alt="MT3">
-    <div><b>UV Mix Batch</b><small>LUX &amp; Mirror bed builder</small></div>
+<header class="app-header-menu">
+  <div class="app-header-menu__main">
+    <a class="app-header-menu__logo-link" href="/"><img class="app-header-menu__logo" src="/static/mt3-mark.png" alt="MT3"></a>
+    <div class="app-header-menu__title-section">
+      <h1 class="app-header-menu__title" id="appTitle">Batching</h1>
+      <div class="app-header-menu__subtitle">UV mix bed builder</div>
+    </div>
+    <nav class="top-nav">
+      <ul class="top-nav__list">
+        <li class="top-nav__item">
+          <button class="top-nav__link top-nav__link--active" id="navBatching" type="button">
+            <svg class="top-nav__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Batching <span class="top-nav__chevron">▾</span>
+          </button>
+          <ul class="top-nav__dropdown" id="navMenu" hidden>
+            <li class="top-nav__section">
+              <div class="top-nav__section-label">UV Mix · LUX &amp; Mirror</div>
+              <ul class="top-nav__section-items">
+                <li><a class="top-nav__dropdown-link top-nav__dropdown-link--active" data-view="build">Build batch</a></li>
+                <li><a class="top-nav__dropdown-link" data-view="history">History</a></li>
+              </ul>
+            </li>
+            <li class="top-nav__section">
+              <div class="top-nav__section-label">Sublimation</div>
+              <ul class="top-nav__section-items">
+                <li><a class="top-nav__dropdown-link is-disabled">Coming soon</a></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+    <span style="flex:1"></span>
+    <div class="app-header-menu__user">
+      <button class="app-header-menu__user-btn" id="userBtn" type="button">
+        <span class="app-header-menu__user-avatar" id="av">·</span>
+        <span class="app-header-menu__user-name" id="who"></span>
+      </button>
+      <div class="app-header-menu__dropdown" id="userMenu" hidden>
+        <div style="padding:14px 16px">
+          <span class="app-header-menu__dropdown-name" id="who2"></span>
+          <span class="app-header-menu__dropdown-role">UV Mix</span>
+        </div>
+        <div class="app-header-menu__dropdown-divider"></div>
+        <a class="app-header-menu__dropdown-item" href="/logout">Sign out</a>
+      </div>
+    </div>
   </div>
-  <nav class="views">
-    <button data-view="build" class="on">Build batch</button>
-    <button data-view="history">History</button>
-  </nav>
-  <span class="sp"></span>
-  <div class="userpill"><span class="av" id="av">·</span><span id="who"></span><a href="/logout">Sign out</a></div>
 </header>
+<div class="page-head">
+  <div class="cd-page-header">
+    <div>
+      <h2 class="cd-page-title" id="pageTitle">UV Mix · Build batch</h2>
+      <p class="cd-page-subtitle" id="pageSub">Scan, paste or upload LUX &amp; Mirror component barcodes → File, Die and Spot PDFs + Excel.</p>
+    </div>
+  </div>
+</div>
 <main class="view on" id="view-build">
   <div class="col">
     <section class="card">
-      <div class="tabs">
-        <button data-tab="scan" class="on">Scan</button>
-        <button data-tab="paste">Paste list</button>
-        <button data-tab="upload">Upload file</button>
+      <div class="tabs cd-pill-tabs">
+        <button data-tab="scan" class="cd-pill-tab active">Scan</button>
+        <button data-tab="paste" class="cd-pill-tab">Paste list</button>
+        <button data-tab="upload" class="cd-pill-tab">Upload file</button>
       </div>
       <div class="pane on" id="pane-scan">
         <div class="scan"><input id="scan" placeholder="Scan component barcode (B433…)" autocomplete="off" autofocus></div>
       </div>
       <div class="pane" id="pane-paste">
         <textarea id="paste" placeholder="Paste barcodes, one per line (commas or spaces also work)"></textarea>
-        <div class="row"><button class="btn" id="pasteGo">Look up all</button><span class="hint" id="pasteCount"></span></div>
+        <div class="row"><button class="cd-btn cd-btn-primary" id="pasteGo">Look up all</button><span class="hint" id="pasteCount"></span></div>
       </div>
       <div class="pane" id="pane-upload">
         <label class="drop" id="drop">
@@ -217,7 +200,7 @@
   </div>
 
   <aside class="col">
-    <div class="card last" id="last"></div>
+    <div class="cd-kpi c-green last" id="last"></div>
   </aside>
 </main>
 
@@ -226,13 +209,13 @@
     <div class="batch-h">
       <h2>Run history</h2>
       <span class="sp"></span>
-      <select id="hFilter" class="btn light" style="padding:7px 10px">
+      <select id="hFilter" class="pulse-input">
         <option value="">All lines</option><option value="LUX">LUX</option><option value="MIRROR">Mirror</option>
       </select>
-      <input id="hSearch" placeholder="Search run ID or user" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px">
+      <input id="hSearch" class="pulse-input" style="font-weight:400" placeholder="Search run ID or user">
     </div>
-    <div class="tw">
-      <table class="htable">
+    <div class="tw nordic-table-container">
+      <table class="nordic-table htable">
         <thead><tr><th>Run</th><th>Line</th><th>Created</th><th>Pieces</th><th>Sheets</th><th>By</th><th>Downloads</th></tr></thead>
         <tbody id="hist"></tbody>
       </table>
@@ -268,13 +251,15 @@ const TONE = {
   order: { printready: 'good', dataready: 'good', live: 'good', complete: 'neutral', shipped: 'neutral', cancelled: 'bad', error: 'bad' },
   item: { live: 'good', shipped: 'neutral' },
 };
-const chip = (kind, v) => `<span class="st ${TONE[kind][v] || 'neutral'}">${esc(v || '—')}</span>`;
+const BADGE = { good: 'cd-badge-success', mid: 'cd-badge-warning', bad: 'cd-badge-error', neutral: 'cd-badge-gray' };
+const chip = (kind, v) => `<span class="cd-badge ${BADGE[TONE[kind][v] || 'neutral']}">${esc(v || '—')}</span>`;
+const lineBadge = line => `<span class="cd-badge ${line === 'LUX' ? 'cd-badge-purple' : 'cd-badge-info'}">${esc(LINE_NAME[line] || line)}</span>`;
 // Reprints normally sit on orders already shipped/complete, so only flag a non-live job or a dead order.
 const needsAttention = it => it.job_status !== 'live' || ['cancelled', 'error'].includes(it.order_status);
 
 // ---- tabs ----
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
   if (b.dataset.tab === 'scan') $('scan').focus();
   if (b.dataset.tab === 'paste') $('paste').focus();
@@ -368,16 +353,16 @@ function render() {
     const attn = list.filter(needsAttention).length;
     return `<section class="card" id="batch-${line}">
       <div class="batch-h">
-        <span class="line ${line}">${LINE_NAME[line]}</span>
+        ${lineBadge(line)}
         <h2>${list.length} piece(s)</h2>
         <span class="meta" id="sheets-${line}">${list.length ? (sheetCounts[line] ? sheetCounts[line] + ' bed sheet(s)' : '…') : ''}</span>
-        ${attn ? `<span class="st mid">${attn} need a status check</span>` : ''}
+        ${attn ? `<span class="cd-badge cd-badge-warning">${attn} need a status check</span>` : ''}
         <span class="sp"></span>
-        <button class="btn light" data-clear="${line}" ${list.length ? '' : 'disabled'}>Clear</button>
-        <button class="btn" data-gen="${line}" ${list.length ? '' : 'disabled'}>Generate ${LINE_NAME[line]} PDFs</button>
+        <button class="cd-btn cd-btn-secondary" data-clear="${line}" ${list.length ? '' : 'disabled'}>Clear</button>
+        <button class="cd-btn cd-btn-primary" data-gen="${line}" ${list.length ? '' : 'disabled'}>Generate ${LINE_NAME[line]} PDFs</button>
       </div>
       <div class="groups">${Object.entries(counts).map(([k, v]) => `${esc(k)} × ${v}`).join('   ·   ')}</div>
-      ${list.length ? `<div class="tw"><table>
+      ${list.length ? `<div class="tw nordic-table-container"><table class="nordic-table">
         <thead><tr><th>#</th><th></th><th>Model</th><th>Print code</th><th>Batch</th><th>Order</th><th>Component</th><th>Size mm</th><th>Status (Pulse)</th><th></th></tr></thead>
         <tbody>${list.map((it, i) => `
           <tr class="${needsAttention(it) ? 'attn' : ''}">
@@ -390,7 +375,7 @@ function render() {
             <td class="mono">${esc(it.component_barcode)}</td>
             <td class="mono">${it.w_mm} × ${it.h_mm}</td>
             <td><div class="stk">
-              <div><span class="k">Job</span>${chip('job', it.job_status)}${it.reprint ? ' <span class="st neutral">reprint</span>' : ''}</div>
+              <div><span class="k">Job</span>${chip('job', it.job_status)}${it.reprint ? ' <span class="cd-badge cd-badge-gray">reprint</span>' : ''}</div>
               <div><span class="k">Order</span>${chip('order', it.order_status)} <span class="k">Item</span>${chip('item', it.item_status)}</div>
               ${it.reprint_reason ? `<small>Reason: ${esc(it.reprint_reason)}</small>` : ''}
               ${it.status_updated ? `<small>Updated ${esc(it.status_updated)}</small>` : ''}
@@ -445,12 +430,13 @@ $('batches').addEventListener('click', async e => {
 
 function dlButtons(runId, small) {
   const b = '/runs/' + encodeURIComponent(runId) + '/';
+  const sz = small ? ' cd-btn-sm' : ' cd-btn-sm';
   return `<div class="dl${small ? ' sm' : ''}">
-    <a class="zip" href="${b}zip">⬇ ZIP</a>
-    <a class="print" href="${b}file" target="_blank">File PDF</a>
-    <a class="die" href="${b}die" target="_blank">Die PDF</a>
-    <a class="spot" href="${b}spot" target="_blank">Spot PDF</a>
-    <a class="xlsx" href="${b}xlsx">Excel</a></div>`;
+    <a class="cd-btn${sz} zip" href="${b}zip">⬇ ZIP</a>
+    <a class="cd-btn${sz} print" href="${b}file" target="_blank">File PDF</a>
+    <a class="cd-btn${sz} die" href="${b}die" target="_blank">Die PDF</a>
+    <a class="cd-btn${sz} spot" href="${b}spot" target="_blank">Spot PDF</a>
+    <a class="cd-btn${sz} xlsx" href="${b}xlsx">Excel</a></div>`;
 }
 
 let allRuns = [];
@@ -460,7 +446,7 @@ function renderHistory() {
     (!q || m.run_id.toLowerCase().includes(q) || (m.user || '').toLowerCase().includes(q)));
   $('hist').innerHTML = rows.map(m => `<tr>
       <td class="mono"><b>${esc(m.run_id)}</b></td>
-      <td><span class="line ${esc(m.line)}">${esc(LINE_NAME[m.line] || m.line)}</span></td>
+      <td>${lineBadge(m.line)}</td>
       <td>${esc(m.created.replace('T', ' '))}</td>
       <td>${m.pieces}</td><td>${m.sheets}</td><td>${esc(m.user)}</td>
       <td>${dlButtons(m.run_id, true)}</td></tr>`).join('');
@@ -474,20 +460,36 @@ async function loadHistory() {
   allRuns = await r.json();
   renderHistory();
   const m = allRuns[0];
-  $('last').innerHTML = m ? `<div class="ttl">Last batch</div>
-      <div class="rid">${esc(m.run_id)}</div>
-      <div class="sub">${esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
+  $('last').innerHTML = m ? `<div class="cd-kpi-label">Last batch</div>
+      <div class="cd-kpi-value">${esc(m.run_id)}</div>
+      <div class="cd-kpi-sub">${esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
       ${dlButtons(m.run_id)}`
-    : '<div class="ttl">Last batch</div><div class="sub" style="margin-top:6px">No batches generated yet.</div>';
+    : '<div class="cd-kpi-label">Last batch</div><div class="cd-kpi-sub" style="margin-top:6px">No batches generated yet.</div>';
 }
 
-document.querySelectorAll('nav.views button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('nav.views button').forEach(x => x.classList.toggle('on', x === b));
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + b.dataset.view));
-  if (b.dataset.view === 'history') loadHistory(); else if ($('pane-scan').classList.contains('on')) $('scan').focus();
-}));
+const PAGES = {
+  build: ['UV Mix · Build batch', 'Scan, paste or upload LUX & Mirror component barcodes → File, Die and Spot PDFs + Excel.'],
+  history: ['UV Mix · History', 'Every generated batch with its File, Die, Spot PDFs and Excel.'],
+};
+function showView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + view));
+  document.querySelectorAll('#navMenu [data-view]').forEach(a => a.classList.toggle('top-nav__dropdown-link--active', a.dataset.view === view));
+  $('pageTitle').textContent = PAGES[view][0]; $('pageSub').textContent = PAGES[view][1];
+  if (view === 'history') loadHistory(); else if ($('pane-scan').classList.contains('on')) $('scan').focus();
+}
+function toggleMenu(btn, menu, open) {
+  const show = open ?? menu.hidden;
+  menu.hidden = !show; btn.classList.toggle('top-nav__link--open', show);
+}
+$('navBatching').addEventListener('click', e => { e.stopPropagation(); $('userMenu').hidden = true; toggleMenu($('navBatching'), $('navMenu')); });
+$('userBtn').addEventListener('click', e => { e.stopPropagation(); toggleMenu($('navBatching'), $('navMenu'), false); $('userMenu').hidden = !$('userMenu').hidden; });
+document.querySelectorAll('#navMenu [data-view]').forEach(a => a.addEventListener('click', () => { toggleMenu($('navBatching'), $('navMenu'), false); showView(a.dataset.view); }));
+document.addEventListener('click', e => {
+  if (!e.target.closest('#navMenu, #navBatching')) toggleMenu($('navBatching'), $('navMenu'), false);
+  if (!e.target.closest('#userMenu, #userBtn')) $('userMenu').hidden = true;
+});
 
-fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => { if (d) { $('who').textContent = d.user; $('av').textContent = (d.user || '?')[0].toUpperCase(); } });
+fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => { if (d) { $('who').textContent = d.user; $('who2').textContent = d.user; $('av').textContent = (d.user || '?')[0].toUpperCase(); } });
 document.addEventListener('click', e => {
   if ($('view-build').classList.contains('on') && $('pane-scan').classList.contains('on') &&
       !e.target.closest('input,button,a,textarea,label,table,select')) $('scan').focus();
