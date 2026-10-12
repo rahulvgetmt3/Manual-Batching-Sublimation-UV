@@ -7920,3 +7920,475 @@ Next, your Mac's settings file. It gets the same optional settings block as the 
 
 - 🔧 **Bash** — Fix branch wording; refresh raw session and readable transcript
   `cd "/Users/rahulverma/Dev/Mix Batch UV" && .venv/bin/python - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+total 43832
+drwxr-xr-x@  6 rahulverma  staff       192 Oct 12 03:33 .
+drwxr-xr-x@ 25 rahulverma  staff       800 Oct 11 05:10 ..
+-rw-r--r--@  1 rahulverma  staff      1235 Oct 11 02:18 README.md
+-rw-r--r--@  1 rahulverma  staff      3181 Oct 11 02:18 export_transcript.py
+-rw-------@  1 rahulverma  staff  22118424 Oct 12 03:33 session-2026-10-11.jsonl
+-rw-r--r--@  1 rahulverma  staff    311188 Oct  …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 08:33
+
+- 🔧 **Bash** — Scan all files to be committed for real secrets
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && set -a; source /Users/rahulverma/Dev/Pulse/.env >/dev/null 2>&1; set +a; python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+checked 42 secret values in 51 files -> hits: none
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 08:33
+
+- 🔧 **Bash** — Commit and push sublimation; sync notes onto main; return to sublimation
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && git add -A && git status --short && git commit -q -m "Handover: README (Sublimation, tools), .env.example optional se`
+
+  <details><summary>output</summary>
+
+```
+M  .env.example
+M  README.md
+M  SCRATCHPAD.md
+M  chat/transcript.md
+M  docs/claude-memory/uv-mix-portal-overview.md
+sublimation pushed: 7f5da5d Handover: README (Sublimation, tools), .env.example optional settings, memory, scratchpad, chat transcript
+main pushed: 033b644 Sync memory, scratchpad and chat transcript from sublimation branch (notes only)
+sublimation
+033b6442312f3b99e76d6cbb233d94644e3 …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 08:33
+
+Everything is saved and pushed to **https://github.com/rahulvgetmt3/uv-mix-batch**. Your Mac is back on the `sublimation` branch, so the portal keeps running the latest version.
+
+| Branch | Latest | What's on it |
+|---|---|---|
+| **`sublimation`** | `7f5da5d` | UV Mix + Sublimation, everything up to now |
+| **`main`** | `033b644` | UV Mix with the Pulse look; the same up-to-date notes, but no Sublimation code yet |
+
+**What was updated:**
+- **Memory:**
+  - the portal overview now covers both processes, the two branches, both logins and the parked admin-login patch;
+  - the Sublimation notes now include any-size templates, all models and your decisions.
+- **Scratchpad:**
+  - a 2026-10-12 session row;
+  - today's log;
+  - open items: the team tests 6UP only, then I merge into `main` and send both teams one update.
+- **Chat:** the transcript is refreshed with all 65 of your messages, with the team password blanked out. The raw session file stays on your Mac only.
+- **README:** a new Sublimation section, plus the new files (`sub_templates.py`, `sub_build.py`, `pulse-shell.css`, `start-mac.sh`, the team ZIP builder).
+- **Settings files:**
+  - `.env.example` gains optional settings for where runs, cache and uploaded templates are stored, and the spot ink name;
+  - your Mac's `.env` gets the same block, all commented out, so nothing changes in how it runs.
+- **Secret check:** I checked 51 files against 42 real passwords, keys and tokens, and none appear in git.
+
+**Next:** when the team is happy with 6UP Sublimation, tell me and I'll merge `sublimation` into `main` and build the update ZIP for both teams. Moving the repo to the MT3 org is still pending too.
+
+## 🧑 Rahul · 2026-10-12 10:50
+
+*[screenshot attached]*
+*[screenshot attached]*
+in sublimation we need to do following:
+We need labels as well for each item. please see screenshot what i am talking about. For each compnent barcode there is label in HP. can we save label pdfs as well based on the 6UP sheet. If there are 6 printfiles in 1 pdf then 6 labels will be saved
+
+## 🧑 Rahul · 2026-10-12 10:50
+
+[Image: source: /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/images/16.png]
+[Image: source: /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/images/17.png]
+
+## 🤖 Claude · 2026-10-12 10:50
+
+Those are HP SiteFlow's **item labels**: order number, account and SKU code, product name, the "MULTI-2" box, the customer name, QTY 1/1, and a QR code with the **item barcode** (B333…). The best way to get them identical is to fetch them straight from SiteFlow, if its API offers them. Your HP Siteflow toolkit has a `labels` module, so I'll check what it can do.
+
+## 🤖 Claude · 2026-10-12 10:50
+
+- 🔧 **Bash** — Inspect HP SiteFlow label methods and notes
+  `cd "/Users/rahulverma/Dev/HP Siteflow" && cat siteflow/labels.py | head -80; grep -rln -i "label" docs/claude-memory/ | head; grep -rn -i "def .*label\|/label\|`
+
+  <details><summary>output</summary>
+
+```
+"""siteflow/labels.py -- Label & Shipping Method endpoint methods."""
+
+
+class LabelsMixin:
+    """Mixin providing Label and Shipping Method API methods. Requires BaseClient._request."""
+
+    def list_labels(self, page=1, pagesize=100):
+        """List all label templates."""
+        path = f"/api/label?page={page}&pagesize={pagesize}"
+        return self._request("GET", path, sign_path="/ …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:51
+
+- 🔧 **Bash** — Read HP SiteFlow greensheet notes
+  `cat "/Users/rahulverma/Dev/HP Siteflow/docs/claude-memory/siteflow-templates-and-greensheets.md"`
+
+  <details><summary>output</summary>
+
+```
+---
+name: siteflow-templates-and-greensheets
+description: "The /api/template endpoint, how greensheets render, and why an attribute a batch rule groups by disappears from job.attributes"
+metadata:
+  node_type: memory
+  type: project
+  originSessionId: 3ba9a006-5472-4234-a278-03aeba46a90c
+  modified: 2026-09-29T13:56:30.848Z
+---
+
+Setup -> Templates in the HP UI is **`/api/template`** (59 records in …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:51
+
+- 🔧 **Bash** — Try SiteFlow ticket-PDF endpoint for the item and component barcode
+  `cd "/Users/rahulverma/Dev/HP Siteflow" && S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad && python`
+
+  <details><summary>output</summary>
+
+```
+(method, path, data=None, sign_path=None)
+B333CF2966 ERROR JSONDecodeError Expecting value: line 1 column 1 (char 0)
+B433CF2967 ERROR JSONDecodeError Expecting value: line 1 column 1 (char 0)
+Shell cwd was reset to /Users/rahulverma/Dev/Mix Batch UV
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:51
+
+The call answered, but the toolkit tried to read the reply as JSON, which suggests it's a **PDF file**. Let me look at how the toolkit sends requests so I can fetch the raw bytes.
+
+## 🤖 Claude · 2026-10-12 10:51
+
+- 🔧 **Bash** — Inspect SiteFlow client request/signing code
+  `cd "/Users/rahulverma/Dev/HP Siteflow" && sed -n 1,200p siteflow/base.py | grep -n "def \|requests\.\|session\|hmac\|headers\|json()\|return\|raw\|content" | he`
+
+  <details><summary>output</summary>
+
+```
+8:import hmac
+16:from requests.adapters import HTTPAdapter
+25:    def __init__(self, base_url, token, secret, request_delay_ms=200):
+37:        self.session = self._build_session()
+39:    def _build_session(self):
+40:        session = requests.Session()
+48:        session.mount("https://", adapter)
+49:        session.mount("http://", adapter)
+50:        return session
+52:    def _create_h …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:51
+
+- 🔧 **Bash** — Fetch ticket PDFs as raw bytes for item and component barcode
+  `cd "/Users/rahulverma/Dev/HP Siteflow" && S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad && python`
+
+  <details><summary>output</summary>
+
+```
+B333CF2966 200 application/pdf 1885 b'%PDF-1.3'
+B433CF2967 200 application/pdf 1885 b'%PDF-1.3'
+-rw-r--r--@ 1 rahulverma  wheel  1885 Oct 12 05:51 /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad/label_B333CF2966.pdf
+-rw-r--r--@ 1 rahulverma  wheel  1885 Oct 12 05:51 /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4 …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:51
+
+SiteFlow returns a real PDF for both barcodes, but it's only 1.9 KB, which is suspiciously small. Let me look at it.
+
+## 🤖 Claude · 2026-10-12 10:51
+
+- 🔧 **Bash** — Inspect the SiteFlow ticket PDF content and size
+  `S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad; cd "/Users/rahulverma/Dev/Mix Batch UV" && sips -s`
+
+  <details><summary>output</summary>
+
+```
+size mm [0.0, 0.0, 79.7, 79.7]
+b'1 0 0 -1 0 226 cm\nq\n1 0 0 -1 0 226 cm\nBT\n1 0 0 1 80.594 75.102 Tm\n/F1 11 Tf\n[<42333333434632393636> 0] TJ\nET\nQ\nq\n1 0 0 -1 0 226 cm\nBT\n1 0 0 1 97.71000000000001 50.204 Tm\n/F1 22 Tf\n[<202f2032> 0] TJ\nET\nQ\nq\n1 0 0 -1 0 226 cm\nBT\n1 0 0 1 63.137 138.102 Tm\n/F1 11 Tf\n[<4974656d2049443a> 50 <2023353438323033322d30> 0] TJ\nET\nQ\n2 2 18 18 re\n/Device …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:51
+
+- 🔧 **Bash** — List SiteFlow templates and find the item-label greensheet
+  `cd "/Users/rahulverma/Dev/HP Siteflow" && S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad && grep -`
+
+  <details><summary>output</summary>
+
+```
+siteflow/labels.py:28:    def get_zpl_template(self, name):
+templates 60
+  6aa1539bb1b51236ce7a0bfc AMZ Test A True html 6662
+  6aa1539c405b80f6f6281cd6 AMZ Test B True html 6577
+  6aa1539e14e5ab063fe886a0 AMZ Test C True html 6479
+  6aa1539ffcc00e132c51aa9e AMZ Test D True html 6326
+  6aa175351e8f230c396d4903 AMZ Test E True html 8535
+  6aa1800f98e33b6cb53856f9 AMZ Test E2 True html 9008
+  6aa14 …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:52
+
+- 🔧 **Bash** — Read the Bold/Classic label template body
+  `S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad; python3 - "$S" <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+{'_id': '684caf56ccc22db64a072fa5', 'accountId': '6524111c7472800007896e61', 'active': True, 'locked': False, 'name': 'Greensheet Manifest Label For BOLD/CLASSIC Cases', 'type': 'html', 'contentType': 'application/html', 'version': '4.7', 'tags': [], 'createdAt': '2023-11-10T13:31:54.408Z', 'updatedAt': '2026-03-19T06:53:05.469Z', '__v': 0}
+<body>
+		<table border="0" height="100%" width="100%" id= …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:52
+
+- 🔧 **Bash** — Read the live 2x1 label template (CSS sizing and body)
+  `S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad; python3 - "$S" <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+{'_id': '69b18e120d31c7276a7b583b', 'accountId': '6524111c7472800007896e61', 'active': True, 'locked': False, 'name': 'Greensheet Manifest Label Testing - MB 2x1', 'type': 'html', 'version': '4.7', 'tags': [], 'createdAt': '2026-03-11T15:45:22.032Z', 'updatedAt': '2026-03-13T11:54:15.040Z', '__v': 0}
+---CSS (page/label sizing):
+  body{height:100%; margin:0; padding:0; width:100%; background: #fff; …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:52
+
+- 🔧 **Bash** — Compare Pulse fields for the screenshot's item barcode
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && set -a && source /Users/rahulverma/Dev/Pulse/.env >/dev/null 2>&1; set +a; .venv/bin/python -W ignore - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+{'order_id': '6acc969968cdf269654dd95e', 'source_id': '#5482032', 'source': 'getcasely', 'ship_to_name': 'Maegan Marie', 'line_items_count': 1, 'item_barcode': 'B333CF2966', 'component_barcode': 'B433CF2967', 'sku': 'CS-KND-PW7', 'description': 'Amazon 7” Kindle Paperwhite Kindle', 'product_description': 'MT3 Amazon Kindle Paperwhite Sleeve 7"', 'hp_od_code': 'POD-KDL-511', 'hp_od_print_sku': 'CL- …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:52
+
+- 🔧 **Bash** — Extract label CSS: sizes, fonts, divider, QR size
+  `S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad; python3 - "$S" <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+body             height:100%; margin:0; padding:0; width:100%; background: #fff;
+.page-holder     position: relative; min-height: 566px; width: 1132px; clear: both; page-break-after: always; padding: 15px 30px 15px 18px; box-sizing: border-box;
+.page-holder     width: 100%;
+.item-page       text-align: left;
+.order-line      font-size: 57px; font-weight: 900; padding-bottom: 9px;
+.order-line       …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:53
+
+- 🔧 **AskUserQuestion** — 
+
+  <details><summary>output</summary>
+
+```
+Your questions have been answered: "What physical size are these item labels (the label roll in the printer)? The SiteFlow template is a 2:1 shape named 'MB 2x1'."="2 x 1 inch", "How should the labels for one sheet be saved?"="1 PDF per sheet, 1 label/page". You can now continue with these answers in mind.
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:54
+
+- 🔧 **Bash** — Add bold fonts, install segno, check order sources for From mapping
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && cp /Users/rahulverma/Dev/Pulse/deliverables/build/fonts/OpenSans-Bold.ttf /Users/rahulverma/Dev/Pulse/deliverables/bu`
+
+  <details><summary>output</summary>
+
+```
+OpenSans-Bold.ttf
+OpenSans-Regular.ttf
+OpenSans-Semibold.ttf
+segno 1.6.6
+sources on sublimation items (30d): [('getcasely', 105537), ('fumicase', 6723), ('inprintwetrust', 210), ('casely', 156), ('hp.mt3', 111), ('iclick', 40), ('arenacases', 39), ('onotone', 15)]
+('getcasely', 'SINGLE ITEM', 'Apple iPhone 15 Plus BOLD FLEX - BLACK BUMPER Matte Finish MagSafe', 'B-421CC-MS', 'Brittany Demers', 'B4 …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:54
+
+- 🔧 **Bash** — Read SiteFlow 'From' attribute per order source
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && set -a && source /Users/rahulverma/Dev/Pulse/.env >/dev/null 2>&1; set +a; .venv/bin/python -W ignore - > /private/tm`
+
+  <details><summary>output</summary>
+
+```
+getcasely 6acc96a1e69e0ed996aac8ac
+fumicase 6acb6d6656ce5e8b06a98bf0
+inprintwetrust 6acc5a2360a70641acb85162
+casely 6aab3f4abe3c2c2e4017e5a0
+hp.mt3 6accac74c53d2a008ceff9c8
+iclick 6ac9eddeed2687cd5ed1d95d
+arenacases 6acc6d6b775da55a0d8f1677
+onotone 6acc5b1d60a7066c2cb851b0
+getcasely       From='GetCasely'  Code='POD-KDL6-507' Item='MULTI-2' CustomerName='Lauren Hall'
+fumicase        From='FumiCase …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:55
+
+- 🔧 **Write** — /Users/rahulverma/Dev/Mix Batch UV/app/labels.py
+
+  <details><summary>output</summary>
+
+```
+File created successfully at: /Users/rahulverma/Dev/Mix Batch UV/app/labels.py (file state is current in your context — no need to Read it back)
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:55
+
+- 🔧 **Bash** — Add label fields to Pulse lookup, label PDFs to runs/ZIP, Labels button
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && grep -n "QUERY = \|SELECT\|FROM hp_order_items\|o.order_status\|i.hp_od_code" app/pulse.py | head && .venv/bin/python`
+
+  <details><summary>output</summary>
+
+```
+15:QUERY = """
+16:SELECT i.component_barcode, i.item_barcode, i.fetch_url, i.sku, i.model, i.case_type,
+17:       i.batch_imposition, i.hp_od_code, i.hp_od_print_sku, i.item_status,
+18:       o.order_id AS hp_order_id, o.source_id AS order_number, o.source, o.order_status,
+21:FROM hp_order_items i
+ok
+numpy>=2.0.2,<3
+fonttools==4.60.2
+segno==1.6.6
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:55
+
+- 🔧 **Bash** — Render a label with the screenshot's values for comparison
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad && .venv`
+
+  <details><summary>output</summary>
+
+```
+ok
+(1240, 620)
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:55
+
+- 🔧 **Read** — /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad/label_test_w.png
+
+  <details><summary>output</summary>
+
+```
+[image]
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:55
+
+- 🔧 **Bash** — Verify QR content; run real Bold batch; check label PDFs and download
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad && .venv`
+
+  <details><summary>output</summary>
+
+```
+QR decodes to: 'B433CF2967'
+UV Mix Batch running: http://localhost:8765  (log: data/server.log)
+{'run_id': 'SUB_BOLD_6UP-EXT_CMYK_20261012_06', 'template': '6UP-EXT', 'sheets': 2, 'pieces': 8, 'error': None}
+SUB_BOLD_6UP-EXT_CMYK_20261012_06_S1.pdf
+SUB_BOLD_6UP-EXT_CMYK_20261012_06_S1_LABELS.pdf
+SUB_BOLD_6UP-EXT_CMYK_20261012_06_S2.pdf
+SUB_BOLD_6UP-EXT_CMYK_20261012_06_S2_LABELS.pdf
+SUB_BOLD_6UP-E …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:56
+
+- 🔧 **Read** — /private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad/real_label_w.png
+
+  <details><summary>output</summary>
+
+```
+[image]
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:56
+
+- 🔧 **Bash** — Record label rules in memory; commit and push to sublimation
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+A  app/fonts/OpenSans-Bold.ttf
+A  app/fonts/OpenSans-Semibold.ttf
+A  app/labels.py
+M  app/pulse.py
+M  app/runs.py
+M  app/static/index.html
+M  docs/claude-memory/sublimation-rules.md
+M  requirements.txt
+a32a493 Sublimation: 2x1in item labels per sheet (copy of HP greensheet 'MB 2x1' template), one PDF per sheet, Labels download
+sublimation
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 10:56
+
+Sublimation runs now save **item labels**: one 2 × 1 inch label per piece, in a labels PDF per sheet. A 6-piece sheet gives a 6-page PDF in the same order as the sheet (S1-1 … S1-6). Refresh the portal and you'll see a **Labels** button next to Sheet PDF and Excel. The labels are also in the ZIP.
+
+**Matching your HP label:** I read your live SiteFlow label template, "Greensheet Manifest Label Testing - MB 2x1", which your 6UP batches already use, and rebuilt it line for line:
+- **#Order** | From | print code
+- **DESCRIPTION**, in capitals, wrapping to two lines
+- a thick divider
+- **MULTI-2** / SINGLE ITEM
+- the **customer name**
+- **QTY 1 / 1**
+- a **QR code** on the right with the item barcode printed under it. As in HP, the QR scans to the **component barcode**; I confirmed this by decoding it (B433CF2967 for your Kindle example).
+
+**Where the data comes from:** everything comes from Pulse, so the portal doesn't need SiteFlow access. The "From" names use SiteFlow's spelling: GetCasely, FumiCase, iClick, ArenaCases and so on. I checked these against real orders.
+
+**What I tested:**
+- **Your Kindle example** rendered almost identical to your screenshot.
+- **A real 8-piece Bold run** produced `S1_LABELS.pdf` with 6 labels and `S2_LABELS.pdf` with 2, both exactly 2 × 1 inch.
+
+**Two small differences from HP:**
+- **Font:** Open Sans Bold instead of Calibri.
+- **Code for partner orders:** for FumiCase, iClick and the like, SiteFlow's "Code" is just "true" or "-". The label shows the print code from Pulse instead, which is more useful to the operator.
+
+Please print one label PDF on the label printer to confirm the size and the QR scan. It's pushed to the `sublimation` branch (`a32a493`), with the label rules saved in memory.
+
+## 🧑 Rahul · 2026-10-12 11:09
+
+it worked, please push to git
+
+## 🤖 Claude · 2026-10-12 11:09
+
+I'll record that the labels worked, refresh the notes and chat, and push.
+
+## 🤖 Claude · 2026-10-12 11:09
+
+- 🔧 **Bash** — Update notes and transcript, commit and push both branches
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && git status --short && python3 - <<'EOF'`
