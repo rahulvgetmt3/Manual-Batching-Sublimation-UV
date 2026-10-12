@@ -1,40 +1,28 @@
 ---
 name: uv-mix-portal-overview
-description: What the UV Mix Batch portal is, its current state, and what is still open (as of 2026-10-11 end of day)
+description: What the Manual Batching portal (UV Mix + Sublimation) is, current state, branches, and what is still open (as of 2026-10-12)
 metadata:
   type: project
 ---
 
-The UV Mix Batch portal replaces the team's manual Illustrator/Photoshop bed builds for **LUX and Mirror** phone cases. That manual process took 20–25 minutes per bed and was error-prone. It is a FastAPI app in `~/Dev/Mix Batch UV/app/`.
+**What it is:** the MT3 **Manual Batching** portal (FastAPI, `~/Dev/Mix Batch UV/app/`). It replaces the team's manual Illustrator/Photoshop bed builds and is styled exactly like Pulse ([[pulse-design-system]]). The **Manual Batching ▾** menu has two processes:
+- **UV Mix (LUX + Mirror):** File PDF, Die PDF (hidden Artwork layer, outlined labels), a Photoshop-style Spot PDF with "Spot Color 1", and Excel. See [[uv-mix-team-requirements]], [[photoshop-spot-channel-psd]] and [[pdf-full-bed-bounding-box]].
+- **Sublimation (Bold, Classic, Essential):** artwork-only sheet PDFs (mirrored, centred, names), any-size uploadable templates, CMYK or RGB, and Excel. See [[sublimation-rules]].
 
-**Flow:** the operator scans, pastes or uploads component barcodes (B433…). The app looks each one up in Pulse (`mt3narada`) and downloads the MT3-approved `fetch_url` file. It then outputs, for a 2180 × 1220 mm bed:
-- **File PDF**;
-- **Die PDF**, with a hidden Artwork layer and outlined labels;
-- **Spot PDF**, a Photoshop-style PDF with a "Spot Color 1" channel;
-- **Excel**, with a Reconcile sheet.
+**Status, end of 2026-10-12:**
+- **UV Mix** is on `main`. The UV team tests it on Windows PCs with the local package ([[windows-test-package]]); their PC connects to Pulse. The new Die PDF and Spot PDF have been confirmed in Photoshop but are still pending a printer confirmation.
+- **`main`** also has the Pulse theme and the Manual Batching naming, but the UV team's PCs still run the older look until they get an update.
+- **Sublimation** is on branch **`sublimation`**, which also has the layout fix (the right column covered the Generate buttons). It's tested on Rahul's Mac with real barcodes, and the **team should test 6UP only** for now. When approved: merge `sublimation` into `main`, then build `app-update.zip` (or the TEAM zip) for both teams.
+- **Repo:** https://github.com/rahulvgetmt3/uv-mix-batch (private, personal account, **testing only**). Later it moves to the **MT3-Global-Tech-Inc** org, with proper hosting (AWS next to the DB, HTTPS, read-only DB user, DB password rotated first). In the end the screens are meant to move **into Pulse** as the "Manual Batching" dropdown.
+- **Logins:** Rahul's Mac login is `Rahul` (via `.env` + `./start-mac.sh`); team PCs use `uvteam`. The passwords are in `dist/LOGINS-private.txt` (Mac only).
+- **Parked:** the hidden "Rahul admin login on every copy" was blocked as a backdoor and never shipped. The patch is parked in `dist/pending-admin-login.patch` and `dist/pending-admins.json` (Mac only). Options: a disclosed admin login, a shared runs folder, or hosting.
 
-These come as a ZIP, and runs are kept in a history.
-
-**Status at end of 2026-10-11:**
-- **Confirmed by Rahul:**
-  - the Spot PDF opens in Photoshop with Spot Color 1;
-  - layouts are right-aligned on the full bed;
-  - the Reconcile sheet uses the `LUX-15-PL` model format.
-- **Team testing:** the team tests on Windows PCs with the local package (`Setup.bat` / `Start UV Mix.bat`). Rahul built the pre-filled team ZIP, and the **team PC connected to Pulse**.
-- **Logins:** Rahul's Mac login is **Rahul** (renamed from `test`). Login is case-insensitive and the display name keeps its case. The team login on test PCs is `uvteam`. Rahul can open the team's portal and has seen their runs.
-- **Seeing the team's history from Rahul's login:** Rahul asked for this and doesn't want to tell the team. Each test PC currently keeps its own `data\runs`. Options given:
-  1. the hosted version, where one History holds all users;
-  2. during testing, a shared cloud folder for `RUNS_DIR`, with Rahul's Mac pointed at it. This is pending his choice of OneDrive, Google Drive or a network drive;
-  3. ask for their files.
-
-  I advised a one-line note to the team (work-log visibility for QA), but it's his call. **Don't write to the Pulse production DB for this.**
-- **Still to confirm on the printer:** the new Die PDF (PDF 1.6, hidden Artwork layer, outlined labels) and the Spot PDF.
-- **Code:** at https://github.com/rahulvgetmt3/uv-mix-batch (private, Rahul's personal account, **testing only**). Plan: once testing passes, move it to the **MT3-Global-Tech-Inc** org and host it properly. Hosting is AWS next to the DB, with HTTPS, team logins, a read-only DB user, and the DB password rotated first.
-
-**Why:** the team had made mistakes in the manual build, and Rahul wants an online portal the team can use.
+**Why:** the team made mistakes in the manual builds, which took 20–25 minutes per bed.
 
 **How to apply:**
-- Treat the team's real print result as the acceptance test. Their reference files are in `Reference/`.
+- Treat the team's real print result as the acceptance test.
 - Don't put credentials in git.
+- New screens should use Pulse classes.
+- Keep `main` shippable to the UV team.
 
-Related: [[uv-mix-team-requirements]], [[photoshop-spot-channel-psd]], [[pdf-full-bed-bounding-box]], [[pulse-lookup-for-uv-mix]], [[windows-test-package]].
+Related: [[rahul-profile]], [[pulse-lookup-for-uv-mix]].

@@ -2,7 +2,7 @@
 
 This is the running log of work on the UV Mix Batch portal. Notes on how things work live in [docs/claude-memory/](docs/claude-memory/); Claude's memory for this folder links there. How to run and deploy is in [README.md](README.md). The full chat is in [chat/](chat/).
 
-**Repo:** https://github.com/rahulvgetmt3/uv-mix-batch (private, branch `main`). `data/`, `Reference/`, `.venv` and the raw chat `.jsonl` are git-ignored.
+**Repo:** https://github.com/rahulvgetmt3/uv-mix-batch (private). Branch `main` holds UV Mix with the Pulse theme; the UV team's PCs still run an older copy. Branch **`sublimation`** adds Sublimation and the layout fix. It's on Rahul's Mac and gets merged when approved. `data/`, `Reference/`, `.venv` and the raw chat `.jsonl` are git-ignored.
 
 To keep it current: after each session, add a dated entry at the top of the **Log**, add a row to **Sessions**, and update **Open items**.
 
@@ -41,6 +41,7 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 | Dates | Machine | Session | Main topics |
 |---|---|---|---|
 | 2026-10-11 | Mac | `38c655b4` | HP and Pulse access check; Current Work counts; LUX file download; portal designed and built (scan, bulk, upload, LUX/Mirror batches, File/Die/Spot/Excel, history, login); fixes for full-bed bounding box, right-aligned layout, Spot as a Photoshop-style PDF (Alph block), RIP-safe Die, Reconcile `LUX-15-PL`; GitHub repo; Windows test package; team connected |
+| 2026-10-12 | Mac | `38c655b4` (same session) | Pulse theme (verbatim Pulse CSS, Manual Batching dropdown), layout fix, **Sublimation**: 6UP/6UP-EXT templates, mirrored/centred sheets, names, Bold/Classic/Essential, all models, CMYK/RGB, flip toggle, any-size uploadable templates; branch `sublimation` |
 
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 

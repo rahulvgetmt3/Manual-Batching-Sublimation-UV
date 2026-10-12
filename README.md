@@ -1,4 +1,10 @@
-# UV Mix Batch portal (LUX + Mirror)
+# MT3 Manual Batching portal (UV Mix + Sublimation)
+
+One portal, styled like Pulse, with a **Manual Batching ▾** menu that has two processes:
+- **UV Mix** (LUX + Mirror): described in the first part of this README.
+- **Sublimation** (Bold, Classic, Essential): see [Sublimation](#sublimation) below. It's on branch `sublimation` until approved.
+
+## UV Mix (LUX + Mirror)
 
 Add component barcodes (or item barcodes, which resolve to their component) by:
 - **Scan**: one at a time with a USB scanner.
@@ -49,6 +55,24 @@ always open at the full bed size, even when the pieces only fill one corner.
 
 To change any of these, edit the constants at the top of `app/layout.py`.
 
+## Sublimation
+Sublimation items are **all Bold, Classic and Essential items**, every model, on any imposition: `Casely6up_*`, `Casely-Bold-6up-Extended`, `Casely-Bold-13/14/15`, `Casely-Bold-16e/17e`, `6up_Sublimation`, `4_Sublimation`, and so on. LUX, Mirror, iPad, Laptop/MacBook, Kindle and Clear generic cases are refused.
+
+- **Input:** scan, paste or upload, the same as UV.
+- **Batches:** one per family (Bold, Classic and Essential never share a sheet). Each batch has three controls:
+  - **Template:** any template; the default is **6UP Extended**.
+  - **Export:** **CMYK** (the default) or RGB.
+  - **Flip artwork:** on by default, giving mirrored artwork.
+- **Output:** one PDF per sheet, plus an Excel (Reconcile + Pieces) and a ZIP.
+- **Placement:** artwork at true size (300 DPI), centred in its slot and mirrored with the placement matrix only. The `OrderID-Model-CaseType` name sits beside each piece, reading bottom to top. Names are centred on the slot and may cross registration marks.
+- **Colour:** files already in the chosen mode go in untouched. Others are converted with the team's **U.S. Web Coated (SWOP) v2** + sRGB (relative colorimetric + BPC), and **no profile is embedded**. Template marks stay as they are in the template.
+- **Templates:** any size (1UP, 6UP, 10UP, …). Upload them under **Manual Batching ▾ › Sublimation › Templates**: a dieline PDF, or an `.ai` with PDF compatibility, without artwork, with one stroked rectangle per piece. The system detects:
+  - the slots;
+  - the name sides;
+  - the frames, QR codes and sample codes, which are not printed.
+
+  Built-in templates are 6UP and 6UP Extended (from `Reference/Sublimation/`). Rebuild them with `.venv/bin/python tools/build_sub_templates.py`. Uploaded templates are stored in `data/templates/sublimation/`.
+
 ## Run locally
 **On Rahul's Mac:** run `./start-mac.sh`. It reads the DB login from `~/Dev/Pulse/.env` and the portal settings (logins, key) from this folder's git-ignored `.env`, then opens http://localhost:8765.
 
@@ -87,4 +111,10 @@ Runs and downloaded files are stored in `/data`. Back it up, or prune old runs f
 | `app/manifest.py` | Excel manifest |
 | `app/runs.py` | Builds a run folder + ZIP; run history |
 | `app/main.py` | FastAPI routes + login |
+| `app/sub_templates.py` | Sublimation templates: detect slots/names, clean, registry (built-in + uploaded) |
+| `app/sub_build.py` | Sublimation sheet PDFs (mirror, centre, names, RGB/CMYK) |
+| `app/static/pulse-shell.css` | Pulse's own CSS (copied verbatim) so the UI matches and ports into Pulse |
+| `tools/build_sub_templates.py` | Rebuild built-in 6UP / 6UP-EXT templates from the team's .ai files |
+| `tools/make_team_zip.py` | Rahul runs it: Windows test package with pre-filled `.env` (git-ignored `dist/`) |
+| `start-mac.sh` | Start the portal on Rahul's Mac (DB login from `~/Dev/Pulse/.env`, portal settings from `.env`) |
 | `app/static/` | Scan screen + login page |
