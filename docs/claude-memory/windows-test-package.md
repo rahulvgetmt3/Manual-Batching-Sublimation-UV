@@ -26,7 +26,9 @@ Both `.bat` files call `windows/*.ps1` with `-ExecutionPolicy Bypass`. Guide: `R
 2. unzips the update into their folder and replaces `app`;
 3. restarts.
 
-Their settings, login and history are kept. This worked on 2026-10-11. For new PCs, rebuild `UV-Mix-Batch-Windows.zip` and ask Rahul to rerun `make_team_zip.py`, which creates a new `uvteam` password each time.
+Their settings, login and history are kept. This worked on 2026-10-11.
+
+**Since 2026-10-12, use the full update:** `dist/Manual-Batching-UPDATE.zip`, which holds `app`, `requirements.txt`, Setup/Start bats, `windows/`, README-WINDOWS, `.env.example` and "UPDATE - READ ME.txt". It has no credentials. The team copies everything over the existing folder, keeping `.env` and `data`, then runs **Setup.bat once** (segno was added for labels; the UV team's original package predates it), starts with "Start Manual Batching.bat" and presses Ctrl+F5. For new PCs, rebuild `UV-Mix-Batch-Windows.zip` and ask Rahul to rerun `make_team_zip.py`, which creates a new `uvteam` password each time.
 
 **Windows gotcha (fixed 2026-10-11):** Python's `read_text()` / `open()` without an encoding uses **cp1252 on Windows**. The UI showed mojibake ("â¬‡ ZIP", "LUX Â· 2 pieces"). **Always pass `encoding="utf-8"`** for text files in `app/`. Mac testing won't catch this.
 
