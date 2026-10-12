@@ -47,6 +47,10 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-12: Sublimation item labels
+- Added 2 × 1 inch item labels: one labels PDF per sheet, one label per page in slot order, and a Labels button. They copy the HP greensheet template "MB 2x1", with data from Pulse and the QR encoding the component barcode.
+- **Rahul confirmed it works.**
+
 ### 2026-10-12: Any-size Sublimation templates
 - Templates can now be uploaded in the portal (Manual Batching ▾ › Sublimation › Templates). Slots, name sides, and frame and QR removal are detected automatically, and pieces per sheet follow the template.
 - Also: all Bold, Classic and Essential models are included (Casely-Bold-13/14/15, Casely-Bold-16e/17e, 4_Sublimation); green frames aren't printed; the defaults are 6UP Extended and CMYK.

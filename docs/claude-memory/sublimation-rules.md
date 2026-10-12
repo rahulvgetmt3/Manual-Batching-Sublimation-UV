@@ -65,3 +65,4 @@ Related: [[uv-mix-portal-overview]], [[pulse-design-system]], [[uv-mix-team-requ
 - **SiteFlow's PDFs are the wrong thing:** `/api/label/ticket/{barcode}/pdf` returns only a small 80 mm shipping ticket, and greensheets come only as HTML per subbatch.
 - **Drawing:** vector text (Open Sans Bold/Semibold in place of Calibri) and a vector QR (`segno`). The QR was verified to decode to the component barcode.
 - **Privacy:** labels contain customer names; they stay in `data/`, which is git-ignored.
+- **Status:** Rahul confirmed on 2026-10-12 that it works ("it worked").
