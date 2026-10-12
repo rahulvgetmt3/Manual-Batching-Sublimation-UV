@@ -33,3 +33,14 @@ Their settings, login and history are kept. This worked on 2026-10-11. For new P
 **How to apply:** test anything text-related with Windows in mind, and ship fixes through `app-update.zip`.
 
 Related: [[uv-mix-portal-overview]], [[pulse-lookup-for-uv-mix]].
+
+**Sublimation (Design) team package (2026-10-12):** built from the `sublimation` branch:
+```
+python3 tools/make_team_zip.py --login DesignTeam --process sub --out Manual-Batching-Sublimation-TEAM.zip
+```
+- The output is `dist/Manual-Batching-Sublimation-TEAM.zip`. The folder is now named "Manual Batching" and the launcher is **`Start Manual Batching.bat`**; it was "Start UV Mix.bat".
+- `DEFAULT_PROCESS=sub` in its `.env` makes a fresh browser open on Sublimation › Build batch (`/api/me` returns `default_process`). UV stays reachable from the menu.
+- Login: **DesignTeam**. The password is in `START HERE.txt` and `dist/LOGINS-private.txt`, never in git.
+- The builder packages **committed** files (`git archive HEAD`), so commit before building.
+
+**Python version (2026-10-12):** the Design team PC had **Python 3.14**. Installing **3.13 alongside it** worked, because Setup asks the py launcher for 3.12/3.13 first; 3.14 isn't supported yet (no cp314 wheels for pikepdf, the mysql connector and others). python.org security-only releases (e.g. 3.12.15) have **no Windows installer**, so point people at 3.13 (`winget install Python.Python.3.13`) or 3.12.10. The docs, START HERE text and Setup message now say this. **The Design team is set up and running.**

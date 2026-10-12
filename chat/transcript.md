@@ -8392,3 +8392,304 @@ I'll record that the labels worked, refresh the notes and chat, and push.
 
 - 🔧 **Bash** — Update notes and transcript, commit and push both branches
   `cd "/Users/rahulverma/Dev/Mix Batch UV" && git status --short && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+secret scan: clean
+sublimation: b8eb3b8 Notes: Sublimation labels confirmed working; chat transcript refreshed
+main: 8924a7f Sync notes from sublimation branch
+sublimation
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 11:10
+
+Everything is pushed to GitHub, and your Mac matches it.
+
+- **`sublimation` (`b8eb3b8`):** all the code, including the labels, plus notes that the labels are confirmed working.
+- **`main` (`8924a7f`):** the same up-to-date memory, scratchpad and chat transcript. The UV code there hasn't changed.
+
+The secret check was clean: no passwords are in git. Your Mac is still on the `sublimation` branch, so the portal keeps running the latest version.
+
+When you're ready, tell me to merge Sublimation into `main` and build the update ZIP for the teams.
+
+## 🧑 Rahul · 2026-10-12 11:11
+
+now we need to send this new access to our sublimation team, give me zip for them
+
+## 🤖 Claude · 2026-10-12 11:11
+
+I'll build a ready-to-run Windows package for the Sublimation team, like the UV one, with three changes:
+- **Opens on Sublimation:** the portal starts on **Sublimation › Build batch** for them. UV stays available in the menu.
+- **Its own login** (`subteam`) with a new random password.
+- **Generic naming:** "Manual Batching" instead of "UV Mix", since it now covers both.
+
+The ZIP is built from the `sublimation` branch, so it includes the templates, labels and everything we just tested.
+
+## 🤖 Claude · 2026-10-12 11:11
+
+- 🔧 **Bash** — Find naming and /api/me to update for the team package
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && git branch --show-current && grep -n "def me\|/api/me" app/main.py && grep -n "UV Mix" windows/*.ps1 README-WINDOWS.m`
+
+  <details><summary>output</summary>
+
+```
+sublimation
+92:@app.get("/api/me")
+93:def me(request: Request):
+windows/start.ps1:1:# UV Mix Batch - start the portal on this PC (http://localhost:8765).
+windows/start.ps1:2:# Run by double-clicking "Start UV Mix.bat" in the main folder. Keep the window open while working.
+windows/start.ps1:33:Write-Host "=== UV Mix Batch is running ===" -ForegroundColor Green
+windows/setup.ps1:1:# UV Mix Batch -  …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 11:11
+
+- 🔧 **Bash** — Default page per team, rename launcher, generic Windows naming
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && sed -n 92,96p app/main.py && git mv "Start UV Mix.bat" "Start Manual Batching.bat" && .venv/bin/python - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+@app.get("/api/me")
+def me(request: Request):
+    return {"user": _require_user(request)}
+
+
+ok
+(eval):23: no matches found: --include=*
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 11:11
+
+The login will be **DesignTeam**. Logins aren't case-sensitive, so "designteam" also works, and the portal shows "DesignTeam". Now the package builder:
+
+## 🤖 Claude · 2026-10-12 11:12
+
+- 🔧 **Bash** — Add login/process/output options to the team ZIP builder
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && .venv/bin/python - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+ok
+compiled
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 11:12
+
+The builder packages what's **committed** in git, so I'll check the page script and commit these changes first. Then I'll build the ZIP.
+
+## 🤖 Claude · 2026-10-12 11:12
+
+- 🔧 **Bash** — Validate page script and /api/me; commit and push package changes
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV/38c655b4-67f1-4ea9-b1a3-050c7f0e9c69/scratchpad && pytho`
+
+  <details><summary>output</summary>
+
+```
+JS syntax OK
+UV Mix Batch running: http://localhost:8765  (log: data/server.log)
+{"user":"Rahul","default_process":"uv"}
+M  .env.example
+M  README-WINDOWS.md
+R  "Start UV Mix.bat" -> "Start Manual Batching.bat"
+M  app/main.py
+M  app/static/index.html
+M  tools/make_team_zip.py
+M  windows/setup.ps1
+M  windows/start.ps1
+40906bc Team packages: generic 'Manual Batching' naming, per-team login and home  …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 11:12
+
+Committed and pushed. Now building the Sublimation team's package, as you asked:
+
+## 🤖 Claude · 2026-10-12 11:12
+
+- 🔧 **Bash** — Build the Sublimation (design) team package with pre-filled settings
+  `cd ~/Dev/"Mix Batch UV" && python3 tools/make_team_zip.py --login DesignTeam --process sub --out Manual-Batching-Sublimation-TEAM.zip`
+
+  <details><summary>output</summary>
+
+```
+Built /Users/rahulverma/Dev/Mix Batch UV/dist/Manual-Batching-Sublimation-TEAM.zip
+Portal login for the team:  DesignTeam / <team-password-redacted>   (also inside START HERE.txt)
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 11:12
+
+- 🔧 **Bash** — Verify team ZIP contents; record login in private file; reveal ZIP
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && Z=dist/Manual-Batching-Sublimation-TEAM.zip && ls -la $Z && .venv/bin/python - "$Z" <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+-rw-r--r--@ 1 rahulverma  staff  1253050 Oct 12 06:12 dist/Manual-Batching-Sublimation-TEAM.zip
+OK  Setup.bat
+OK  Start Manual Batching.bat
+OK  START HERE.txt
+OK  .env
+OK  app/labels.py
+OK  app/sub_build.py
+OK  app/sub_templates.py
+OK  app/templates/sublimation/6UP-EXT.pdf
+OK  app/templates/sublimation/6UP.pdf
+OK  app/templates/sublimation/swop.icc
+OK  app/fonts/OpenSans-Bold.ttf
+OK  app/static/pu …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 11:12
+
+Everything is in the package. One last housekeeping step: I'll note in memory and the scratchpad that the Design team package exists, without the password, and push.
+
+## 🤖 Claude · 2026-10-12 11:12
+
+- 🔧 **Bash** — Record Design team package in memory and scratchpad; push
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+3949193 Notes: Sublimation (Design) team package
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 11:12
+
+The Design team's package is ready, and I've opened its folder in Finder.
+
+**File:** `~/Dev/Mix Batch UV/dist/Manual-Batching-Sublimation-TEAM.zip` (1.25 MB)
+
+**Their login:**
+- Username: **DesignTeam** (not case-sensitive)
+- Password: **<team-password-redacted>**
+
+The login is also inside the ZIP in **START HERE.txt**, and saved in your `dist/LOGINS-private.txt`.
+
+**What they do:**
+1. Copy the **Manual Batching** folder to their PC, for example `C:\Manual Batching`.
+2. Install **Python 3.12** if it isn't already installed, ticking "Add python.exe to PATH".
+3. Double-click **Setup.bat** once. It should end with "OK - connected to Pulse".
+4. Each day, double-click **Start Manual Batching.bat**. The browser opens straight on **Sublimation › Build batch**, and the black window must stay open while they work.
+
+**What's included:** everything we built and tested for Sublimation:
+- the 6UP Extended (default) and 6UP templates;
+- mirrored sheets with names;
+- CMYK or RGB export and the flip toggle;
+- 2 × 1 inch labels per sheet;
+- Excel and history;
+- the Templates page for uploading other sizes.
+
+Their database settings are already filled in, so they don't need you.
+
+**Before sending:**
+- **Share it privately** (internal drive or a direct message). It contains the Pulse database password.
+- **Network:** if their PC isn't on your office internet connection, Setup will print an address that needs adding to the database allowlist.
+- **UV team:** the UV team keeps their current setup. The launcher has been renamed to "Start Manual Batching.bat" in this new version only, and they'll get it with their next update.
+
+The code is pushed to GitHub (`sublimation`, latest `3949193`), with memory and scratchpad updated. The password isn't in git.
+
+## 🧑 Rahul · 2026-10-12 11:13
+
+they will have both accessess
+
+## 🤖 Claude · 2026-10-12 11:13
+
+They already have both. The Design team's package includes the full portal, and the **Manual Batching ▾** menu at the top gives them:
+- **UV Mix · LUX & Mirror:** Build batch, History
+- **Sublimation:** Build batch, History, Templates
+
+The only difference is the **start page**. A fresh browser opens on Sublimation, because that's their main work. They can switch to UV Mix from the menu at any time, and the portal remembers the last page they used. Their DesignTeam login works for both, and nothing needs rebuilding.
+
+If you'd rather it open on UV Mix, or have no start page set, tell me and I'll rebuild the ZIP. The **UV team's** current package is the older version without Sublimation; they'll get both when we send them the update.
+
+## 🧑 Rahul · 2026-10-12 11:13
+
+let me login in their system
+
+## 🤖 Claude · 2026-10-12 11:13
+
+You can, but only on their PC. Their portal runs **only on that PC** (`localhost`), so it can't be reached from your Mac. You have two ways in:
+
+1. **Sit at their PC, or connect with remote desktop** (AnyDesk, TeamViewer, Windows Remote Desktop). Open http://localhost:8765 in the browser there and sign in with:
+   - Username: **DesignTeam**
+   - Password: **<team-password-redacted>**
+
+   You'll see exactly what they see, including the batches they've made.
+
+2. **See the Design team's view on your own Mac.** I can add the DesignTeam login to your Mac portal and set it to open on Sublimation. You'll get the same screens, but with your Mac's batches, not theirs, because each PC keeps its own history.
+
+Making their portal reachable from your Mac over the network would bring back the hidden-access issue that was blocked earlier, so I'd only set that up once the team knows about it.
+
+Do you want me to set up option 2 on your Mac?
+
+## 🧑 Rahul · 2026-10-12 11:16
+
+<pasted_content id="7215">
+Note: The release you're looking at is Python 3.12.15, a security bugfix release for the legacy 3.12 series. Python 3.14 is now the latest feature release series of Python 3. Get the latest release of 3.14.x here.
+Download Python | Python.org
+The official home of the Python Programming Language
+www.python.org
+</pasted_content id="7215">
+
+## 🤖 Claude · 2026-10-12 11:16
+
+That page is for **Python 3.12.15**, a security-only release. Those are published without a Windows installer, which is why it looks wrong. You don't need it.
+
+Install **Python 3.13** instead. The setup supports 3.10–3.13, and everything we use has ready-made 3.13 packages for Windows. **Don't install 3.14**: it's too new, some of our components don't support it yet, and Setup will say it can't find a suitable Python.
+
+**On the team's PC:**
+1. Go to **https://www.python.org/downloads/windows/**.
+2. Under the latest **Python 3.13.x**, click **"Windows installer (64-bit)"**.
+3. Run it, and on the first screen tick **"Add python.exe to PATH"**, then click Install Now.
+4. Double-click **Setup.bat** in the Manual Batching folder.
+
+Alternatively, run this in PowerShell instead of steps 1–3: `winget install Python.Python.3.13`
+
+If they'd rather stay on 3.12, version **3.12.10** is the last one with a Windows installer: https://www.python.org/downloads/release/python-31210/
+
+No change to the ZIP is needed. Setup finds 3.13 automatically. The "Install Python 3.12" line in START HERE.txt is just outdated wording.
+
+## 🧑 Rahul · 2026-10-12 11:16
+
+they have 3.14
+
+## 🤖 Claude · 2026-10-12 11:16
+
+That's fine, and they **don't need to uninstall 3.14**. Windows can have several Python versions side by side, and our Setup specifically asks the Python launcher for 3.12 or 3.13 first, so it will use 3.13 and ignore 3.14.
+
+**On their PC:**
+1. Install **Python 3.13** next to 3.14. Either run this in PowerShell:
+   ```
+   winget install Python.Python.3.13
+   ```
+   or download "Windows installer (64-bit)" for the latest 3.13.x from https://www.python.org/downloads/windows/ and run it, keeping the **"py launcher"** option ticked.
+2. Double-click **Setup.bat** again. The window should say **"Using Python 3.13"**, then install everything and end with "OK - connected to Pulse."
+3. Double-click **Start Manual Batching.bat**.
+
+Their 3.14 stays as it is for anything else they use it for.
+
+Why not run on 3.14: it came out very recently, and some of our components, such as the PDF library and the database connector, don't all have ready-made 3.14 versions for Windows yet. On 3.14, Setup would fail or try to compile them from source. If they still get an error, send me a screenshot of the Setup window.
+
+## 🧑 Rahul · 2026-10-12 11:32
+
+worked, thanks update github
+
+## 🤖 Claude · 2026-10-12 11:32
+
+Glad it worked. I'll record what we learned about Python versions in the Windows guide, the package's START HERE text, memory and the scratchpad, then refresh the chat and push.
+
+## 🤖 Claude · 2026-10-12 11:32
+
+- 🔧 **Bash** — Update Python guidance, memory, scratchpad; refresh transcript; scan secrets
+  `cd "/Users/rahulverma/Dev/Mix Batch UV" && .venv/bin/python - <<'EOF'`
