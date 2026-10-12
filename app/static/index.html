@@ -12,7 +12,10 @@
   * { box-sizing:border-box; }
   main { max-width:1400px; margin:0 auto; padding:20px 16px 60px; display:grid; gap:16px; grid-template-columns: minmax(0,1fr) 300px; }
   @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
-  .col { display:grid; gap:16px; align-content:start; min-width:0; }
+  .col { display:grid; gap:16px; align-content:start; min-width:0; grid-template-columns:minmax(0,1fr); }
+  .col > * { min-width:0; }   /* wide tables scroll inside their card instead of widening the column */
+  main > aside { align-self:start; }
+  .nordic-table td.wrap { white-space:normal; min-width:220px; max-width:360px; }   /* the right column must not stretch over the batch cards */
   .pane { display:none; } .pane.on { display:block; }
   .scan input { width:100%; font-size:20px; padding:12px 14px; border:2px solid var(--ink); border-radius:10px; letter-spacing:.04em; }
   textarea { width:100%; min-height:130px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font:13px ui-monospace, Menlo, Consolas, monospace; resize:vertical; }
@@ -435,7 +438,7 @@ function render() {
           <tr class="${needsAttention(it) ? 'attn' : ''}">
             <td>${proc === 'sub' ? `S${Math.floor(i / 6) + 1}-${i % 6 + 1}` : i + 1}</td>
             <td><img loading="lazy" src="/api/thumb?url=${encodeURIComponent(it.fetch_url)}" alt=""></td>
-            <td><div class="lbl" ${proc === 'sub' ? 'style="font-size:13px"' : ''}>${esc(it.label)}</div><small>${esc(proc === 'uv' ? it.model : it.batch_imposition)}</small></td>
+            <td class="${proc === 'sub' ? 'wrap' : ''}"><div class="lbl" ${proc === 'sub' ? 'style="font-size:13px"' : ''}>${esc(it.label)}</div><small>${esc(proc === 'uv' ? it.model : it.batch_imposition)}</small></td>
             <td class="mono">${esc(it.print_code)}<br><small>${esc(it.print_sku)}</small></td>
             <td class="mono">${esc(it.batch_number)}</td>
             <td class="mono">${esc(it.order_number)}</td>
