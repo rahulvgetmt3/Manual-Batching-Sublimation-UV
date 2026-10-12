@@ -9,7 +9,8 @@ Rules (agreed with Rahul, 2026-10-12):
   the placement matrix; pixels are never changed.
 - The name goes beside each piece, reading bottom to top: left-column pieces on the left edge
   and right-column pieces on the right edge, centred on the slot, 15 pt black, as vector
-  outlines, so it never depends on fonts. Positions are taken from the team's reference.
+  outlines, so it never depends on fonts (any readable font is fine - Rahul). Centred on the
+  slot and allowed to cross the registration marks (Rahul, 2026-10-12).
 - Colour (artwork only): "RGB" keeps RGB files untouched and converts CMYK files to RGB;
   "CMYK" keeps CMYK files untouched and converts RGB files to CMYK. Conversions use the
   team's 'U.S. Web Coated (SWOP) v2' profile with sRGB, relative colorimetric + black point
@@ -38,7 +39,6 @@ NAME_SIZE = 15.08            # pt, as in the team's reference
 NAME_X_LEFT = 12.3 * MM      # baseline x for left-column names (reference)
 NAME_X_RIGHT = 310.3 * MM    # baseline x for right-column names (reference)
 NAME_MARGIN = 6 * MM         # keep names this far inside the slot height
-MARK_CLEAR = 3 * MM          # keep names this far from registration marks
 
 _SRGB = ImageCms.createProfile("sRGB")
 _SWOP = ImageCms.ImageCmsProfile(str(TPL_DIR / "swop.icc"))
@@ -109,38 +109,14 @@ def artwork_xobject(pdf, path, color):
     return _converted_xobject(pdf, path, color), True
 
 
-def _name_span(slot_y0, slot_y1, marks, width):
-    """Where the name goes along the slot: centred if that clears the registration marks on that edge,
-    otherwise centred in the largest clear stretch of the slot (shrunk only if it cannot fit).
-    Returns (start_y, length)."""
-    lo, hi = slot_y0 + NAME_MARGIN, slot_y1 - NAME_MARGIN
-    free = [(lo, hi)]
-    for m0, m1 in marks:
-        m0, m1 = m0 - MARK_CLEAR, m1 + MARK_CLEAR
-        nxt = []
-        for a, b in free:
-            if m1 <= a or m0 >= b:
-                nxt.append((a, b))
-            else:
-                if m0 > a:
-                    nxt.append((a, m0))
-                if m1 < b:
-                    nxt.append((m1, b))
-        free = nxt
-    cy = (slot_y0 + slot_y1) / 2
-    c0, c1 = cy - width / 2, cy + width / 2
-    if any(a <= c0 and c1 <= b for a, b in free):
-        return c0, width
-    a, b = max(free, key=lambda seg: seg[1] - seg[0])
-    length = min(width, b - a)
-    return (a + b) / 2 - length / 2, length
-
-
-def _name_outline(text, x_baseline, slot_y0, slot_y1, marks):
-    """Text rotated 90 degrees (reads bottom to top) beside a slot, as filled outlines."""
+def _name_outline(text, x_baseline, slot_y0, slot_y1):
+    """Text rotated 90 degrees (reads bottom to top) beside a slot, as filled outlines.
+    Centred on the slot; it may cross the registration marks (as in the team's file). It only
+    shrinks if the name is longer than the slot."""
     names = [_CMAP.get(ord(c), ".notdef") for c in text]
     width = sum(_GLYPHS[n].width for n in names) * NAME_SIZE / _UPM
-    start, length = _name_span(slot_y0, slot_y1, marks, width)
+    length = min(width, (slot_y1 - slot_y0) - 2 * NAME_MARGIN)
+    start = (slot_y0 + slot_y1) / 2 - length / 2
     scale = NAME_SIZE / _UPM * (length / width)   # shrinks only when the name cannot fit
     ops, x = [], 0.0
     for n in names:  # glyphs laid out along +x from 0, then rotated into place by the cm below
@@ -188,8 +164,7 @@ def build_sheet(template, color, pieces, out_path, title, mirror=True):
             ops.append(f"q {w:.4f} 0 0 {h:.4f} {x0:.4f} {y0:.4f} cm /{name} Do Q")
         side = "L" if i % 2 == 0 else "R"
         x_base = NAME_X_LEFT if side == "L" else NAME_X_RIGHT
-        marks = [(m0, m1) for sd, m0, m1 in tpl.get("marks", []) if sd == side]
-        ops.append(_name_outline(pc["name"], x_base, sy, sy + sh, marks))
+        ops.append(_name_outline(pc["name"], x_base, sy, sy + sh))
     page.contents_add(pdf.make_stream(("\n".join(ops)).encode("latin-1")), prepend=False)
     pdf.save(out_path, min_version="1.6")
     return warnings

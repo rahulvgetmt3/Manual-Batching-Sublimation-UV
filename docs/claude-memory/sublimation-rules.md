@@ -25,8 +25,9 @@ metadata:
    - Slot order is TL, TR, ML, MR, BL, BR.
 7. **Names** are `OrderID-Model-CaseType` (for example `#5488010-iPhone 18 Pro-BOLD FLEX - BLUE BUMPER`):
    - left-column pieces on the left edge (baseline x 12.3 mm), right-column pieces on the right edge (x 310.3 mm);
-   - 15 pt, reading bottom to top, as black vector outlines (Open Sans, because Myriad isn't available);
-   - centred on the slot, but **kept clear of the ⊕ registration marks**, moving into the larger clear stretch and shrinking only if needed.
+   - 15 pt, reading bottom to top, as black vector outlines (Open Sans; any readable font is fine);
+   - **centred on the slot and allowed to cross the ⊕ registration marks**, as in the team's file. They shrink only if longer than the slot.
+   - Rahul, 2026-10-12: any readable font is fine (operators only); let names cross the marks; the Reconcile model = Pulse model name is OK.
 8. **Colour:**
    - No profile is ever embedded in converted images, and there's no OutputIntent.
    - The **RGB/CMYK export choice applies to the artwork only**: a file already in the chosen mode is untouched, as with UV; otherwise it's converted with the team's **U.S. Web Coated (SWOP) v2** + sRGB, relative colorimetric with BPC.

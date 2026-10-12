@@ -30,8 +30,7 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 
 **Sublimation (branch `sublimation`)**
 - [ ] Rahul or the team check the sheet PDFs in Illustrator and on the printer: mirroring, centring, names and RGB/CMYK.
-- [ ] Confirm the Excel Reconcile "Model" for Sublimation; it's currently the Pulse model name.
-- [ ] Names use Open Sans because Myriad Pro (used in the team file) isn't available. Confirm that's OK.
+- [x] Confirmed 2026-10-12: Reconcile model = Pulse model name; any readable font for names; names may cross registration marks.
 - [ ] Merge into `main` and ship the update ZIP to the teams.
 
 **Known data issues**
