@@ -33,3 +33,12 @@ Their settings, login and history are kept. This worked on 2026-10-11. For new P
 **How to apply:** test anything text-related with Windows in mind, and ship fixes through `app-update.zip`.
 
 Related: [[uv-mix-portal-overview]], [[pulse-lookup-for-uv-mix]].
+
+**Sublimation (Design) team package (2026-10-12):** built from the `sublimation` branch:
+```
+python3 tools/make_team_zip.py --login DesignTeam --process sub --out Manual-Batching-Sublimation-TEAM.zip
+```
+- The output is `dist/Manual-Batching-Sublimation-TEAM.zip`. The folder is now named "Manual Batching" and the launcher is **`Start Manual Batching.bat`**; it was "Start UV Mix.bat".
+- `DEFAULT_PROCESS=sub` in its `.env` makes a fresh browser open on Sublimation › Build batch (`/api/me` returns `default_process`). UV stays reachable from the menu.
+- Login: **DesignTeam**. The password is in `START HERE.txt` and `dist/LOGINS-private.txt`, never in git.
+- The builder packages **committed** files (`git archive HEAD`), so commit before building.

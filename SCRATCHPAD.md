@@ -47,6 +47,10 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-12: Package for the Sublimation (Design) team
+- Built `dist/Manual-Batching-Sublimation-TEAM.zip` with login **DesignTeam** (the password is in the ZIP's START HERE.txt and `dist/LOGINS-private.txt`). It opens on Sublimation.
+- Generic "Manual Batching" naming and `Start Manual Batching.bat` (`40906bc`). The UV team still has the older package and launcher name until they get an update.
+
 ### 2026-10-12: Sublimation item labels
 - Added 2 × 1 inch item labels: one labels PDF per sheet, one label per page in slot order, and a Labels button. They copy the HP greensheet template "MB 2x1", with data from Pulse and the QR encoding the component barcode.
 - **Rahul confirmed it works.**
