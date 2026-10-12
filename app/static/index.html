@@ -93,6 +93,7 @@
   .grp-MIRROR { border-left:4px solid var(--color-info); }
   .grp-BOLD { border-left:4px solid var(--color-primary); }
   .grp-CLASSIC { border-left:4px solid var(--success); }
+  .grp-ESSENTIAL { border-left:4px solid var(--cyan); }
   .grp-OTHER { border-left:4px solid var(--warning); }
   .subopts { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:12px; padding:10px 12px;
              background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; }
@@ -247,10 +248,10 @@ const PROC = {
   uv: { key: 'uvmix.items.v2', name: 'UV Mix', unit: 'bed sheet(s)',
         hint: 'Nothing added yet. Scan, paste or upload LUX / Mirror component barcodes. Each line gets its own batch.' },
   sub: { key: 'submix.items.v1', name: 'Sublimation', unit: 'sheet(s)',
-        hint: 'Nothing added yet. Scan, paste or upload 6UP (Bold / Classic) component barcodes. Bold and Classic get separate batches.' },
+        hint: 'Nothing added yet. Scan, paste or upload 6UP (Bold / Classic / Essential) component barcodes. Each family gets its own batch. LUX, Mirror, iPad, Laptop and Kindle are not accepted.' },
 };
 const TPL_NAME = { '6UP': '6UP', '6UP-EXT': '6UP Extended' };
-const FAMILY_NAME = { BOLD: 'Bold', CLASSIC: 'Classic', OTHER: 'Other' };
+const FAMILY_NAME = { BOLD: 'Bold', CLASSIC: 'Classic', ESSENTIAL: 'Essential', OTHER: 'Other' };
 const LINE_NAME = { LUX: 'LUX', MIRROR: 'Mirror', ...TPL_NAME };
 let proc = 'uv';
 const store = {};
@@ -266,7 +267,7 @@ const subOpts = {};  // group -> {template, color, mirror}
 const groupOf = it => proc === 'uv' ? it.line : `${it.family || 'OTHER'}|${it.line}`;
 const groupTitle = g => proc === 'uv' ? (LINE_NAME[g] || g) : `${FAMILY_NAME[g.split('|')[0]] || g} · ${TPL_NAME[g.split('|')[1]] || ''}`;
 const groupClass = g => 'grp-' + (proc === 'uv' ? g : g.split('|')[0]);
-const ORDER = { uv: ['LUX', 'MIRROR'], sub: ['BOLD|6UP', 'BOLD|6UP-EXT', 'CLASSIC|6UP', 'CLASSIC|6UP-EXT', 'OTHER|6UP', 'OTHER|6UP-EXT'] };
+const ORDER = { uv: ['LUX', 'MIRROR'], sub: ['BOLD|6UP', 'BOLD|6UP-EXT', 'CLASSIC|6UP', 'CLASSIC|6UP-EXT', 'ESSENTIAL|6UP', 'ESSENTIAL|6UP-EXT', 'OTHER|6UP', 'OTHER|6UP-EXT'] };
 
 function beep(ok) {
   try {
@@ -287,7 +288,7 @@ const BADGE = { good: 'cd-badge-success', mid: 'cd-badge-warning', bad: 'cd-badg
 const chip = (kind, v) => `<span class="cd-badge ${BADGE[TONE[kind][v] || 'neutral']}">${esc(v || '—')}</span>`;
 const LINE_BADGE = { LUX: 'cd-badge-purple', MIRROR: 'cd-badge-info', '6UP': 'cd-badge-cyan', '6UP-EXT': 'cd-badge-cyan' };
 const lineBadge = line => `<span class="cd-badge ${LINE_BADGE[line] || 'cd-badge-gray'}">${esc(LINE_NAME[line] || line)}</span>`;
-const famBadge = f => f ? `<span class="cd-badge ${f === 'BOLD' ? 'cd-badge-purple' : f === 'CLASSIC' ? 'cd-badge-success' : 'cd-badge-gray'}">${esc(FAMILY_NAME[f] || f)}</span>` : '';
+const famBadge = f => f ? `<span class="cd-badge ${f === 'BOLD' ? 'cd-badge-purple' : f === 'CLASSIC' ? 'cd-badge-success' : f === 'ESSENTIAL' ? 'cd-badge-cyan' : 'cd-badge-gray'}">${esc(FAMILY_NAME[f] || f)}</span>` : '';
 // Reprints normally sit on orders already shipped/complete, so only flag a non-live job or a dead order.
 const needsAttention = it => it.job_status !== 'live' || ['cancelled', 'error'].includes(it.order_status);
 const q = () => `process=${proc}`;
@@ -542,7 +543,7 @@ function renderHistory() {
 }
 function historyFilters() {
   const opts = proc === 'uv' ? [['LUX', 'LUX'], ['MIRROR', 'Mirror']]
-    : [['BOLD', 'Bold'], ['CLASSIC', 'Classic'], ['6UP', '6UP'], ['6UP-EXT', '6UP Extended']];
+    : [['BOLD', 'Bold'], ['CLASSIC', 'Classic'], ['ESSENTIAL', 'Essential'], ['6UP', '6UP'], ['6UP-EXT', '6UP Extended']];
   $('hFilter').innerHTML = '<option value="">All</option>' + opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
 }
 $('hFilter').addEventListener('change', renderHistory);

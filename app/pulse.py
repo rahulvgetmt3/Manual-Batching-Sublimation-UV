@@ -89,6 +89,26 @@ def sub_template(batch_imposition):
     return "6UP-EXT" if "extended" in imp else "6UP"
 
 
+# Products that are never sublimated (UV / other processes). Blocked on the Sublimation page even if
+# Pulse ever puts them on a 6UP imposition (Rahul, 2026-10-12).
+_SUB_BLOCK_SKU = {"LX", "MR", "IPD", "LP", "KND", "MB", "MAC"}   # LUX, Mirror, iPad, Laptop, Kindle, MacBook
+_SUB_BLOCK_WORDS = ("LUX", "ALIGN", "MIRROR", "IPAD", "LAPTOP", "MACBOOK", "KINDLE")
+
+
+def sub_blocked(sku, case_type, batch_imposition):
+    """Name of the blocked product if this item must not go on a Sublimation sheet, else None."""
+    segs = set((sku or "").upper().replace("_", "-").split("-"))
+    hit = segs & _SUB_BLOCK_SKU
+    if hit:
+        return {"LX": "LUX", "MR": "Mirror", "IPD": "iPad", "LP": "Laptop", "KND": "Kindle",
+                "MB": "MacBook", "MAC": "MacBook"}[sorted(hit)[0]]
+    text = f"{case_type or ''} {batch_imposition or ''}".upper()
+    for w in _SUB_BLOCK_WORDS:
+        if w in text:
+            return {"ALIGN": "LUX"}.get(w, w.title())
+    return None
+
+
 def sub_family(case_type, sku=""):
     """Bold and Classic print on separate sheets. Family comes from the case type
     ('BOLD FLEX - BLACK BUMPER', 'BOLD - BLACK' = Bold; 'CLAS-BK', 'CLAS-CL' = Classic), with the SKU
@@ -103,6 +123,8 @@ def sub_family(case_type, sku=""):
         return "BOLD"
     if "-CL-" in s:
         return "CLASSIC"
+    if "-ES-" in s:          # Essential (Tough / Slim) on 6up_Sublimation impositions
+        return "ESSENTIAL"
     return "OTHER"
 
 
@@ -114,6 +136,9 @@ def normalise(codes):
 def _to_item(row, process="uv"):
     code = row["component_barcode"]
     if process == "sub":
+        blocked = sub_blocked(row["sku"], row["case_type"], row["batch_imposition"])
+        if blocked:
+            raise LookupError_(f"{code}: {blocked} is not printed by sublimation ({row['sku']})")
         line = sub_template(row["batch_imposition"])
         if not line:
             raise LookupError_(f"{code}: {row['batch_imposition'] or row['sku']} is not a Sublimation (6UP) item")

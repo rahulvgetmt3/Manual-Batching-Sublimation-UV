@@ -24,7 +24,7 @@ def _safe(s):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
 
 
-RUN_ID_RE = re.compile(r"(UV_[A-Z]+|SUB_(BOLD|CLASSIC|OTHER)_6UP(-EXT)?_(RGB|CMYK))_\d{8}_\d+")
+RUN_ID_RE = re.compile(r"(UV_[A-Z]+|SUB_(BOLD|CLASSIC|ESSENTIAL|OTHER)_6UP(-EXT)?_(RGB|CMYK))_\d{8}_\d+")
 
 
 def _claim_run_dir(line, prefix="UV"):
@@ -139,7 +139,7 @@ def create_sub_run(barcodes, template, color, user="", mirror=True):
     items = [found[b] for b in barcodes]
     families = {it.family for it in items}
     if len(families) > 1:
-        raise ValueError("Bold and Classic print on separate sheets; generate them as separate batches")
+        raise ValueError("Bold, Classic and Essential print on separate sheets; generate them as separate batches")
     family = families.pop()
     paths = _download_all(items)
 

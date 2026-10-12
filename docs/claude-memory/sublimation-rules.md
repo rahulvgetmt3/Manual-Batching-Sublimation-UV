@@ -17,7 +17,8 @@ metadata:
 
    The user picks the template per batch. It's pre-set from Pulse: an imposition containing "Extended" → 6UP-EXT.
 3. **Sublimation items** are Pulse impositions containing "6up": Casely6up_Bold, Casely-Bold-6up-Extended (+ _AMZ-FBM), Casely6up_Classic, 6up_Sublimation, Casely6up_Sublimation-Extended, Amazon*6up*, Casely6up_MagWallet.
-4. **Bold and Classic are never on the same sheet or run**, like LUX and Mirror. The family comes from the **case type** ("BOLD…" → Bold, "CLAS…" → Classic), with the SKU (`-BL-` / `-CL-`) as a fallback. Imposition names mix the two (Classic items sit on Casely-Bold-6up-Extended).
+4. **Bold, Classic and Essential are never on the same sheet or run**, like LUX and Mirror. The family comes from the **case type** ("BOLD…" → Bold, "CLAS…" → Classic), with the SKU (`-BL-` / `-CL-`) as a fallback. **Essential** (Tough / Slim, SKUs `ES-…` / `CS-ES-…`, on 6up_Sublimation impositions, ~32k items in 90 days) is **included** as its own family (Rahul, 2026-10-12).
+   - **Hard block:** LUX, Mirror, iPad, Laptop/MacBook and Kindle are never accepted on the Sublimation page, even if Pulse ever puts them on a 6UP imposition. This is `pulse.sub_blocked()`: SKU segments LX/MR/IPD/LP/KND/MB/MAC, or case type/imposition words LUX/ALIGN/MIRROR/IPAD/LAPTOP/MACBOOK/KINDLE. It's verified live against real barcodes. Imposition names mix the two (Classic items sit on Casely-Bold-6up-Extended).
 5. **Output:** artwork-only PDFs, **one PDF per sheet** (`SUB_<FAMILY>_<TPL>_<RGB|CMYK>_<date>_NN_S1.pdf`), plus the same Excel (Reconcile model = Pulse model name) and a ZIP. Downloading multiple sheets gives a ZIP of the PDFs.
 6. **Placement:**
    - Artwork is at true size (300 DPI), **centred in the slot**.
