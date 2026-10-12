@@ -15,6 +15,7 @@ BARCODE_RE = re.compile(r"^[A-Z0-9]{6,20}$")
 QUERY = """
 SELECT i.component_barcode, i.item_barcode, i.fetch_url, i.sku, i.model, i.case_type,
        i.batch_imposition, i.hp_od_code, i.hp_od_print_sku, i.item_status,
+       i.description, i.item_type, i.quantity, o.ship_to_name,
        o.order_id AS hp_order_id, o.source_id AS order_number, o.source, o.order_status,
        j.id AS job_row, j.full_batch_number, j.status AS job_status, j.reprint, j.reprint_reason,
        j.hp_updated_at AS status_updated
@@ -54,6 +55,10 @@ class Item:
     label: str
     reconcile_model: str = ""
     family: str = ""
+    description: str = ""     # label: product description (SiteFlow 'Description')
+    item_type: str = ""       # label: SINGLE ITEM / MULTI-n (SiteFlow 'Item')
+    quantity: int = 1         # label: QTY x / quantity
+    customer_name: str = ""   # label: SiteFlow 'Customer Name' (ship-to name)
 
     def to_dict(self):
         return asdict(self)
@@ -186,6 +191,10 @@ def _to_item(row, process="uv"):
         label=label,
         reconcile_model=reconcile,
         family=family,
+        description=row.get("description") or "",
+        item_type=row.get("item_type") or "",
+        quantity=int(row.get("quantity") or 1),
+        customer_name=row.get("ship_to_name") or "",
     )
 
 

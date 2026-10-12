@@ -15,6 +15,7 @@ from .manifest import write_manifest
 from .pdf_build import build_pdfs
 from .spot_pdf import build_spot_pdf
 from .pulse import lookup_many, normalise
+from .labels import build_labels
 from .sub_build import build_sheet, image_mode
 from .sub_templates import DEFAULT_TEMPLATE, registry
 
@@ -159,13 +160,17 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
     out = RUNS_DIR / run_id
     (out / "files").mkdir()
     sheets = (len(pieces) + per_sheet - 1) // per_sheet
-    sheet_pdfs, warnings = [], []
+    sheet_pdfs, label_pdfs, warnings = [], [], []
     for s in range(sheets):
         chunk = pieces[s * per_sheet:(s + 1) * per_sheet]
         pdf_path = out / f"{run_id}_S{s + 1}.pdf"
         for w in build_sheet(template, color, chunk, pdf_path, pdf_path.stem, mirror=mirror):
             warnings.append(f"sheet {s + 1} {w}")
         sheet_pdfs.append(pdf_path)
+        # item labels for this sheet: one 2x1" label per piece, in slot order (as HP SiteFlow prints them)
+        lbl_path = out / f"{run_id}_S{s + 1}_LABELS.pdf"
+        build_labels(items[s * per_sheet:(s + 1) * per_sheet], lbl_path, lbl_path.stem)
+        label_pdfs.append(lbl_path)
     xlsx = out / f"{run_id}_manifest.xlsx"
     write_manifest(placements, items, xlsx, run_id)
 
@@ -195,7 +200,7 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
     }
     (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     with zipfile.ZipFile(out / f"{run_id}.zip", "w", zipfile.ZIP_DEFLATED) as z:
-        for f in (*sheet_pdfs, xlsx):
+        for f in (*sheet_pdfs, *label_pdfs, xlsx):
             z.write(f, f.name)
         for f in sorted((out / "files").iterdir()):
             z.write(f, f"files/{f.name}")
@@ -219,6 +224,8 @@ def run_file(run_id, kind):
     out = RUNS_DIR / run_id
     if run_id.startswith("SUB_") and kind == "file":
         return _sheets_download(out, run_id)
+    if run_id.startswith("SUB_") and kind == "labels":
+        return _sheets_download(out, run_id, labels=True)
     if kind == "spot":
         return _spot_download(out, run_id)
     name = {"zip": f"{run_id}.zip", "file": f"{run_id}_FILE.pdf",
@@ -240,12 +247,16 @@ def _spot_download(out, run_id):
     return z
 
 
-def _sheets_download(out, run_id):
-    """Sublimation sheet PDF; for a multi-sheet run, one ZIP holding every sheet's PDF."""
-    pdfs = sorted(out.glob(f"{run_id}_S*.pdf"), key=lambda p: int(p.stem.rsplit("_S", 1)[1]))
+def _sheets_download(out, run_id, labels=False):
+    """Sublimation sheet (or label) PDF; for a multi-sheet run, one ZIP holding every sheet's PDF."""
+    if labels:
+        pdfs = sorted(out.glob(f"{run_id}_S*_LABELS.pdf"), key=lambda p: int(p.stem.split("_S")[-1].split("_")[0]))
+    else:
+        pdfs = sorted((p for p in out.glob(f"{run_id}_S*.pdf") if not p.stem.endswith("_LABELS")),
+                      key=lambda p: int(p.stem.rsplit("_S", 1)[1]))
     if len(pdfs) <= 1:
         return pdfs[0] if pdfs else None
-    z = out / f"{run_id}_SHEETS.zip"
+    z = out / f"{run_id}_{'LABELS' if labels else 'SHEETS'}.zip"
     if not z.exists():
         with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
             for f in pdfs:

@@ -551,6 +551,7 @@ function dlButtons(m, small) {
     return `<div class="dl${small ? ' sm' : ''}">
     <a class="cd-btn${sz} zip" href="${b}zip">⬇ ZIP</a>
     <a class="cd-btn${sz} print" href="${b}file" target="_blank">${m.sheets > 1 ? `Sheet PDFs (${m.sheets})` : 'Sheet PDF'}</a>
+    <a class="cd-btn${sz} die" href="${b}labels" target="_blank">${m.sheets > 1 ? `Labels (${m.sheets})` : 'Labels'}</a>
     <a class="cd-btn${sz} xlsx" href="${b}xlsx">Excel</a></div>`;
   }
   return `<div class="dl${small ? ' sm' : ''}">

@@ -57,3 +57,11 @@ Related: [[uv-mix-portal-overview]], [[pulse-design-system]], [[uv-mix-team-requ
 - **Runs:** pieces per sheet = the template's slot count. Run id `SUB_<FAMILY>_<KEY>_<COLOR>_<date>_NN`. An over-size artwork gives a warning per slot.
 - **UI:** Manual Batching ▾ › Sublimation › **Templates** has the upload form plus cards with an SVG slot diagram. The batch Template dropdown lists every template with "(N per sheet)", and 6UP Extended is the default.
 - **Tested** with synthetic 10UP (2 × 5) and 1UP dielines and the real 6UP `.ai` re-uploaded. The test templates were deleted afterwards. **Only 6UP is to be tested by the team for now.**
+
+**Item labels (2026-10-12):** Rahul wants HP's per-item label with every Sublimation sheet. There's **one label PDF per sheet, one 2 × 1 inch label per page, in slot order** (`<run>_S1_LABELS.pdf`), plus a **Labels** download button and the labels in the ZIP. This is `app/labels.py`.
+- **Source design:** the live SiteFlow greensheet template **"Greensheet Manifest Label Testing - MB 2x1"** (`69b18e120d31c7276a7b583b`); live 6UP subbatches use this `greensheetTemplateId`. Its item page is 1132 × 566 px, Calibri, and reads:
+  `{{sourceOrderId}} | {{attributes.From}} | {{attributes.Code}}` / `{{attributes.Description}}` upper case / divider / `{{attributes.Item}}` / `{{attributes.[Customer Name]}}` / `QTY n / printQuantity` / QR of **`../barcode` (the component barcode)** with **`itemBarcode`** printed under it.
+- **No SiteFlow call needed.** Pulse has every field: `source_id`, `source` (mapped to SiteFlow's "From" spelling: getcasely→GetCasely, fumicase→FumiCase, iclick→iClick, arenacases→ArenaCases, onotone→Onotone, inprintwetrust→Inprintwetrust, casely/hp.mt3 as-is), `hp_od_code` (shown instead of SiteFlow's Code, which is `true` or `-` for partner orders), `description`, `item_type`, `ship_to_name` and `quantity`.
+- **SiteFlow's PDFs are the wrong thing:** `/api/label/ticket/{barcode}/pdf` returns only a small 80 mm shipping ticket, and greensheets come only as HTML per subbatch.
+- **Drawing:** vector text (Open Sans Bold/Semibold in place of Calibri) and a vector QR (`segno`). The QR was verified to decode to the component barcode.
+- **Privacy:** labels contain customer names; they stay in `data/`, which is git-ignored.
