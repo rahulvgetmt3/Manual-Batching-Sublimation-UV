@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-**What it is:** the MT3 **Manual Batching** portal (FastAPI, `~/Dev/Mix Batch UV and Sublimation/app/`; folder renamed from `Mix Batch UV` on 2026-10-13, GitHub repo still `uv-mix-batch`). It replaces the team's manual Illustrator/Photoshop bed builds and is styled exactly like Pulse ([[pulse-design-system]]). The **Manual Batching ▾** menu has two processes:
+**What it is:** the MT3 **Manual Batching** portal (FastAPI, `~/Dev/Mix Batch UV and Sublimation/app/`; folder renamed from `Mix Batch UV` on 2026-10-13, GitHub repo `rahulvgetmt3/Manual-Batching-Sublimation-UV`). It replaces the team's manual Illustrator/Photoshop bed builds and is styled exactly like Pulse ([[pulse-design-system]]). The **Manual Batching ▾** menu has two processes:
 - **UV Mix (LUX + Mirror):** File PDF, Die PDF (hidden Artwork layer, outlined labels), a Photoshop-style Spot PDF with "Spot Color 1", and Excel. See [[uv-mix-team-requirements]], [[photoshop-spot-channel-psd]] and [[pdf-full-bed-bounding-box]].
 - **Sublimation (Bold, Classic, Essential):** artwork-only sheet PDFs (mirrored, centred, names), any-size uploadable templates, CMYK or RGB, and Excel. See [[sublimation-rules]].
 
@@ -15,7 +15,7 @@ metadata:
 - **UV Mix** is on `main`. The UV team tests it on Windows PCs with the local package ([[windows-test-package]]); their PC connects to Pulse. The new Die PDF and Spot PDF have been confirmed in Photoshop but are still pending a printer confirmation.
 - **`main`** also has the Pulse theme and the Manual Batching naming, but the UV team's PCs still run the older look until they get an update.
 - **Sublimation** is on branch **`sublimation`**, which also has the layout fix (the right column covered the Generate buttons). It's tested on Rahul's Mac with real barcodes, and the **team should test 6UP only** for now. When approved: merge `sublimation` into `main`, then build `app-update.zip` (or the TEAM zip) for both teams.
-- **Repo:** https://github.com/rahulvgetmt3/uv-mix-batch (private, personal account, **testing only**). Later it moves to the **MT3-Global-Tech-Inc** org, with proper hosting (AWS next to the DB, HTTPS, read-only DB user, DB password rotated first). In the end the screens are meant to move **into Pulse** as the "Manual Batching" dropdown.
+- **Repo:** https://github.com/rahulvgetmt3/Manual-Batching-Sublimation-UV (renamed from `uv-mix-batch` on 2026-10-13; private, personal account, **testing only**). Later it moves to the **MT3-Global-Tech-Inc** org, with proper hosting (AWS next to the DB, HTTPS, read-only DB user, DB password rotated first). In the end the screens are meant to move **into Pulse** as the "Manual Batching" dropdown.
 - **Logins:** Rahul's Mac login is `Rahul` (via `.env` + `./start-mac.sh`); team PCs use `uvteam`. The passwords are in `dist/LOGINS-private.txt` (Mac only).
 - **Parked:** the hidden "Rahul admin login on every copy" was blocked as a backdoor and never shipped. The patch is parked in `dist/pending-admin-login.patch` and `dist/pending-admins.json` (Mac only). Options: a disclosed admin login, a shared runs folder, or hosting.
 

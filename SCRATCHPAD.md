@@ -2,7 +2,7 @@
 
 This is the running log of work on the UV Mix Batch portal. Notes on how things work live in [docs/claude-memory/](docs/claude-memory/); Claude's memory for this folder links there. How to run and deploy is in [README.md](README.md). The full chat is in [chat/](chat/).
 
-**Repo:** https://github.com/rahulvgetmt3/uv-mix-batch (private). Branch `main` holds UV Mix with the Pulse theme; the UV team's PCs still run an older copy. Branch **`sublimation`** adds Sublimation and the layout fix. It's on Rahul's Mac and gets merged when approved. `data/`, `Reference/`, `.venv` and the raw chat `.jsonl` are git-ignored.
+**Repo:** https://github.com/rahulvgetmt3/Manual-Batching-Sublimation-UV (private; renamed from `uv-mix-batch` on 2026-10-13; local folder `~/Dev/Mix Batch UV and Sublimation`). Branch `main` holds UV Mix with the Pulse theme; the UV team's PCs still run an older copy. Branch **`sublimation`** adds Sublimation and the layout fix. It's on Rahul's Mac and gets merged when approved. `data/`, `Reference/`, `.venv` and the raw chat `.jsonl` are git-ignored.
 
 To keep it current: after each session, add a dated entry at the top of the **Log**, add a row to **Sessions**, and update **Open items**.
 
@@ -19,7 +19,7 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 - [ ] **Feedback from the team** after a full day of use.
 
 **Move to live (after testing passes)**
-- [ ] **Move the repo** `rahulvgetmt3/uv-mix-batch` to the **MT3-Global-Tech-Inc** org (GitHub › Settings › Transfer ownership).
+- [ ] **Move the repo** `rahulvgetmt3/Manual-Batching-Sublimation-UV` to the **MT3-Global-Tech-Inc** org (GitHub › Settings › Transfer ownership).
 - [ ] **Rotate the Pulse DB password**, which is exposed and now also on the team test PCs. Create a **read-only** DB user for the portal, then rebuild the team ZIP.
 - [ ] **AWS hosting:** an EC2 or Lightsail instance in the DB's region, with a security-group rule to port 3306, a domain such as `uvmix.getmt3.com`, and HTTPS through Caddy. See README › Deploy.
 - [ ] **Real logins:** set real `PORTAL_USERS` and a long `SECRET_KEY`, replacing the test `uvteam` login.
