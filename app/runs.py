@@ -124,14 +124,25 @@ def _download_all(items):
         return list(ex.map(_get, items))
 
 
-def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True):
+def _per_sheet(templates, template, per):
+    """Artworks per sheet PDF: the template's slot count, or fewer (1..slots) when the team prints
+    on fewer nesting jigs. The first slots in fill order are used (TL, TR, ML, ...)."""
+    slots = len(templates[template]["slots"])
+    try:
+        per = int(per or 0)
+    except (TypeError, ValueError):
+        per = 0
+    return slots if per <= 0 else min(per, slots)
+
+
+def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, per_sheet=0):
     """Sublimation: one PDF per 6-up sheet in the chosen template, artwork mirrored and centred,
     names beside each piece, artwork exported as RGB or CMYK."""
     template = template or DEFAULT_TEMPLATE  # default: 6UP Extended (Rahul)
     templates = registry()
     if template not in templates:
         raise ValueError(f"Unknown template {template!r}")
-    per_sheet = len(templates[template]["slots"])
+    per_sheet = _per_sheet(templates, template, per_sheet)
     color = (color or "CMYK").upper()      # default: CMYK (Rahul)
     if color not in ("RGB", "CMYK"):
         raise ValueError("Colour must be RGB or CMYK")
@@ -188,6 +199,7 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
         "template": template,
         "template_title": templates[template]["title"],
         "per_sheet": per_sheet,
+        "slots": len(templates[template]["slots"]),
         "color": color,
         "mirror": bool(mirror),
         "created": dt.datetime.now().isoformat(timespec="seconds"),
@@ -225,7 +237,7 @@ def _custom_manifest(rows, path, title):
     wb.save(path)
 
 
-def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, fit=False):
+def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, fit=False, per_sheet=0):
     """Sublimation sheets from artwork uploaded by the team (no Pulse order): same template,
     flip and RGB/CMYK options; copies repeat an artwork; optional fit-to-slot. No item labels."""
     from .custom import item_for
@@ -249,7 +261,7 @@ def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", 
                            "copy_no": n + 1, "copies": copies})
     if not pieces:
         raise ValueError("No custom artwork added")
-    per_sheet = len(templates[template]["slots"])
+    per_sheet = _per_sheet(templates, template, per_sheet)
 
     run_id = _claim_run_dir(f"CUSTOM_{template}_{color}", prefix="SUB")
     out = RUNS_DIR / run_id
@@ -279,6 +291,7 @@ def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", 
     meta = {
         "run_id": run_id, "process": "sub", "custom": True, "line": template, "family": "CUSTOM",
         "template": template, "template_title": templates[template]["title"], "per_sheet": per_sheet,
+        "slots": len(templates[template]["slots"]),
         "color": color, "mirror": bool(mirror), "fit": bool(fit),
         "created": dt.datetime.now().isoformat(timespec="seconds"), "user": user,
         "pieces": len(pieces), "sheets": sheets,

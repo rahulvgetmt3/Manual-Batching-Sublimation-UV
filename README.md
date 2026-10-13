@@ -75,6 +75,8 @@ Sublimation items are **all Bold, Classic and Essential items**, every model, on
 
   Built-in templates are 6UP and 6UP Extended (from `Reference/Sublimation/`). Rebuild them with `.venv/bin/python tools/build_sub_templates.py`. Uploaded templates are stored in `data/templates/sublimation/`.
 
+**Artworks per sheet:** each Sublimation batch can put fewer artworks on a sheet than the template has slots (e.g. 1 or 2 of 6) when printing on fewer nesting jigs. The first slots are filled in order (TL, TR, ML, …); the rest stay empty. Labels and positions follow the chosen count.
+
 ## Run locally
 **On Rahul's Mac:** run `./start-mac.sh`. It reads the DB login from `~/Dev/Pulse/.env` and the portal settings (logins, key) from this folder's git-ignored `.env`, then opens http://localhost:8765.
 
