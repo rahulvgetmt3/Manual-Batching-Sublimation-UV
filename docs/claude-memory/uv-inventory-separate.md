@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-This folder (`~/Dev/Mix Batch UV`) is **only for UV and Sublimation batching**. UV Inventory (stock of printed UV cases in bins, port 8766) was built here by mistake on 2026-10-13. The same day it was moved to **`~/Dev/UV Inventory Model`**, which has its own git, `.env`, data and memory. All inventory files, data and branches were removed from here.
+This folder (`~/Dev/Mix Batch UV and Sublimation`, renamed from `Mix Batch UV` on 2026-10-13) is **only for UV and Sublimation batching**. UV Inventory (stock of printed UV cases in bins, port 8766) was built here by mistake on 2026-10-13. The same day it was moved to **`~/Dev/UV Inventory Model`**, which has its own git, `.env`, data and memory. All inventory files, data and branches were removed from here.
 
 **Why:** Rahul wants each module in its own folder and repo; he thought the inventory work was already happening in the other folder.
 

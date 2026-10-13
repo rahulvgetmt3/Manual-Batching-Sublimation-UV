@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-**What it is:** the MT3 **Manual Batching** portal (FastAPI, `~/Dev/Mix Batch UV/app/`). It replaces the team's manual Illustrator/Photoshop bed builds and is styled exactly like Pulse ([[pulse-design-system]]). The **Manual Batching ▾** menu has two processes:
+**What it is:** the MT3 **Manual Batching** portal (FastAPI, `~/Dev/Mix Batch UV and Sublimation/app/`; folder renamed from `Mix Batch UV` on 2026-10-13, GitHub repo still `uv-mix-batch`). It replaces the team's manual Illustrator/Photoshop bed builds and is styled exactly like Pulse ([[pulse-design-system]]). The **Manual Batching ▾** menu has two processes:
 - **UV Mix (LUX + Mirror):** File PDF, Die PDF (hidden Artwork layer, outlined labels), a Photoshop-style Spot PDF with "Spot Color 1", and Excel. See [[uv-mix-team-requirements]], [[photoshop-spot-channel-psd]] and [[pdf-full-bed-bounding-box]].
 - **Sublimation (Bold, Classic, Essential):** artwork-only sheet PDFs (mirrored, centred, names), any-size uploadable templates, CMYK or RGB, and Excel. See [[sublimation-rules]].
 

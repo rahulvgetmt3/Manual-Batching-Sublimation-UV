@@ -2,7 +2,7 @@
 """Build the ready-to-use Windows test package for the team.
 
 Run it yourself on the Mac (it reads your own Pulse login):
-    cd "~/Dev/Mix Batch UV"
+    cd "~/Dev/Mix Batch UV and Sublimation"
     python3 tools/make_team_zip.py                                   # UV team (login uvteam, opens on UV)
     python3 tools/make_team_zip.py --login DesignTeam --process sub \
         --out Manual-Batching-Sublimation-TEAM.zip                    # Sublimation (design) team
