@@ -10,6 +10,7 @@ metadata:
 - **Sublimation (Bold, Classic, Essential):** artwork-only sheet PDFs (mirrored, centred, names), any-size uploadable templates, CMYK or RGB, and Excel. See [[sublimation-rules]].
 
 **Status, end of 2026-10-12:**
+- **2026-10-13:** added Sublimation "Artworks per sheet" (fewer nesting jigs) and rebuilt `dist/Manual-Batching-UPDATE.zip` from `370e51c` for both teams. Open question for Rahul: are the jigs in the top two slots? (Currently the first slots are filled in order.)
 - **Latest (all set):** custom artwork on both UV (die at image size, typed name on die) and Sublimation (confirmed working by Rahul). Both teams are updated with `dist/Manual-Batching-UPDATE.zip`, which has no credentials ([[windows-test-package]]). Everything is pushed on branch `sublimation`; `main` has notes only.
 - **UV Mix** is on `main`. The UV team tests it on Windows PCs with the local package ([[windows-test-package]]); their PC connects to Pulse. The new Die PDF and Spot PDF have been confirmed in Photoshop but are still pending a printer confirmation.
 - **`main`** also has the Pulse theme and the Manual Batching naming, but the UV team's PCs still run the older look until they get an update.

@@ -10189,3 +10189,360 @@ The transcript still contains the team passwords, so I'm fixing the redaction be
 
 - 🔧 **Bash** — Redact portal passwords in transcript export and re-export
   `cd ~/Dev/"Mix Batch UV" && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+0
+ SCRATCHPAD.md             |    4 +
+ chat/export_transcript.py |   20 +-
+ chat/transcript.md        | 1534 ++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 1538 insertions(+), 20 deletions(-)
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 12:50
+
+- 🔧 **Bash** — Confirm passwords were never committed earlier
+  `cd ~/Dev/"Mix Batch UV" && git log --all --oneline -S "<redacted>" | head; git log --all --oneline -S "<redacted>" | head; echo checked`
+
+  <details><summary>output</summary>
+
+```
+checked
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 12:50
+
+Nothing sensitive was ever committed. Now I'll update the README and memory, then commit and push the notes to both branches.
+
+## 🤖 Claude · 2026-10-12 12:50
+
+- 🔧 **Bash** — Check README and overview for custom artwork mentions
+  `cd ~/Dev/"Mix Batch UV" && grep -n -i "custom" README.md | head; grep -n "Status\|status end" docs/claude-memory/uv-mix-portal-overview.md | head -5`
+
+  <details><summary>output</summary>
+
+```
+31:`fetch_url`, which holds the MT3-approved print file. The customer artwork in
+12:**Status, end of 2026-10-12:**
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 12:50
+
+- 🔧 **Bash** — Read README intro and overview status
+  `cd ~/Dev/"Mix Batch UV" && sed -n 1,30p README.md; sed -n 10,24p docs/claude-memory/uv-mix-portal-overview.md`
+
+  <details><summary>output</summary>
+
+```
+# MT3 Manual Batching portal (UV Mix + Sublimation)
+
+One portal, styled like Pulse, with a **Manual Batching ▾** menu that has two processes:
+- **UV Mix** (LUX + Mirror): described in the first part of this README.
+- **Sublimation** (Bold, Classic, Essential): see [Sublimation](#sublimation) below. It's on branch `sublimation` until approved.
+
+## UV Mix (LUX + Mirror)
+
+Add component barcodes (or i …
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 12:50
+
+- 🔧 **Bash** — Update README and overview memory
+  `cd ~/Dev/"Mix Batch UV" && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+(Bash completed with no output)
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 12:50
+
+- 🔧 **Bash** — Find update section in Windows guide
+  `cd ~/Dev/"Mix Batch UV" && grep -n "^#" README-WINDOWS.md; grep -n -i "updat" README-WINDOWS.md | head`
+
+  <details><summary>output</summary>
+
+```
+1:# Manual Batching on a Windows PC (testing)
+6:## One-time setup
+21:## Every day
+26:## If something goes wrong
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 12:50
+
+- 🔧 **Bash** — Commit and push all notes to sublimation branch
+  `cd ~/Dev/"Mix Batch UV" && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+M  README-WINDOWS.md
+M  README.md
+M  SCRATCHPAD.md
+M  chat/export_transcript.py
+M  chat/transcript.md
+M  docs/claude-memory/uv-mix-portal-overview.md
+f3dc534 Notes: UV custom artwork, team update steps, README; transcript export redacts portal passwords
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 12:51
+
+Now syncing the notes onto `main` (code stays on `sublimation` until you approve the merge).
+
+## 🤖 Claude · 2026-10-12 12:51
+
+- 🔧 **Bash** — Sync notes to main, push, return to sublimation
+  `cd ~/Dev/"Mix Batch UV" && git checkout -q main && git pull -q origin main 2>/dev/null; git checkout sublimation -- docs/claude-memory SCRATCHPAD.md chat/transc`
+
+  <details><summary>output</summary>
+
+```
+fd842b6 Notes: sync from sublimation (UV custom artwork, team update package)
+sublimation
+```
+</details>
+
+## 🤖 Claude · 2026-10-12 12:51
+
+Everything is updated and pushed to GitHub. Your Mac is back on the `sublimation` branch with nothing left uncommitted.
+
+- **`sublimation` branch (all the new work):** UV custom artwork, the README sections on custom artwork and on installing updates for the teams, the scratchpad log, memory notes and the refreshed chat transcript.
+- **`main` branch:** I copied over the notes (memory, scratchpad, chat) only. The new code stays on `sublimation` until you approve the merge.
+
+The refreshed chat transcript was showing the team passwords in plain text. I fixed the export so it hides every portal login and the database password. I also checked git history, and no password was ever pushed.
+
+**Still to do later:**
+- Get printer confirmation of the UV Die and Spot PDFs.
+- Merge `sublimation` into `main` once you're happy.
+- Move the repo to the MT3-Global-Tech-Inc GitHub org, host it, and rotate the database password.
+
+## 🧑 Rahul · 2026-10-13 05:57
+
+1 thing we need to implement is:
+1. If user want 1 artwork or 2 artwork in 6UP sheet, he can choose, reason behind this is we might have 2 nesting jigs to print and we only need 2 artworks per pdf or 1 or could be 3 4 5. So give this option as well in sublimation part
+
+## 🤖 Claude · 2026-10-13 05:57
+
+- 🔧 **Bash** — Read sublimation run chunking and slot use
+  `cd ~/Dev/"Mix Batch UV" && sed -n "$(grep -n '^def create_sub_run' app/runs.py | cut -d: -f1),+82p" app/runs.py; grep -n "slots\|def build_sheet" app/sub_build.`
+
+  <details><summary>output</summary>
+
+```
+def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True):
+    """Sublimation: one PDF per 6-up sheet in the chosen template, artwork mirrored and centred,
+    names beside each piece, artwork exported as RGB or CMYK."""
+    template = template or DEFAULT_TEMPLATE  # default: 6UP Extended (Rahul)
+    templates = registry()
+    if template not in templates:
+        …
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 05:57
+
+- 🔧 **Bash** — Add artworks-per-sheet option to sublimation runs
+  `cd ~/Dev/"Mix Batch UV" && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+299:const perSheet = k => (TPLS[k] ? TPLS[k].slots : 6);
+489:        ${(TPL_ORDER.length ? TPL_ORDER : [o.template]).map(k => `<option value="${k}" ${o.template === k ? 'selected' : ''}>${esc(TPL_NAME[k])} (${perSheet(k)} per sheet)</option>`).join('')}
+533:    const sheets = proc === 'sub' ? Math.ceil(pieceCount / perSheet(optsFor(g).template)) : sheetCounts[g];
+551:            <td>${proc === 'su …
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 05:58
+
+- 🔧 **Bash** — Add per-sheet selector in UI and syntax-check
+  `cd ~/Dev/"Mix Batch UV" && python3 - <<'EOF'`
+
+  <details><summary>output</summary>
+
+```
+JS OK
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 05:58
+
+Now testing through the server: custom artwork at 2 per sheet, plus a real order batch at 1 per sheet.
+
+## 🤖 Claude · 2026-10-13 05:58
+
+- 🔧 **Bash** — Test per-sheet option on custom and order runs
+  `cd ~/Dev/"Mix Batch UV" && ./start-mac.sh >/dev/null 2>&1; sleep 1; T="$TMPDIR/ps"; rm -rf "$T"; mkdir -p "$T"`
+
+  <details><summary>output</summary>
+
+```
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01 2 6 3 None
+B43387FDF3,B43387FD6B,B43387FCD9
+SUB_BOLD_6UP-EXT_CMYK_20261013_01 1 6 3 None
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 05:58
+
+- 🔧 **Bash** — Check label counts and render sheet 1
+  `cd ~/Dev/"Mix Batch UV" && D=data/runs/SUB_CUSTOM_6UP-EXT_CMYK_20261013_01; ls $D; .venv/bin/python -c "`
+
+  <details><summary>output</summary>
+
+```
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01.zip
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01_S1.pdf
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01_S1_LABELS.pdf
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01_S2.pdf
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01_S2_LABELS.pdf
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01_S3.pdf
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01_S3_LABELS.pdf
+SUB_CUSTOM_6UP-EXT_CMYK_20261013_01_manifest.xlsx
+files
+run.json
+SUB_CUSTOM_6UP-E …
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 05:58
+
+- 🔧 **Read** — /var/folders/hb/mppn8_t149v2p3537gr5dlrw0000gn/T/ps/s1.png
+
+  <details><summary>output</summary>
+
+```
+[image]
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 05:58
+
+Two artworks per sheet land in the top two slots (TL, TR), and the rest of the sheet stays empty. Next I'll clean up the test batches, then commit.
+
+## 🤖 Claude · 2026-10-13 05:58
+
+- 🔧 **Bash** — Clean up tests, update notes, commit and push
+  `cd ~/Dev/"Mix Batch UV" && rm -rf data/runs/SUB_CUSTOM_6UP-EXT_CMYK_20261013_01 data/runs/SUB_BOLD_6UP-EXT_CMYK_20261013_01 "$TMPDIR/ps" "$TMPDIR/p.js" && cat >`
+
+  <details><summary>output</summary>
+
+```
+370e51c Sublimation: artworks per sheet option (1..slots) for fewer nesting jigs
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 05:58
+
+- 🔧 **Bash** — Rebuild team update ZIP with new option
+  `cd ~/Dev/"Mix Batch UV" && OUT=dist/Manual-Batching-UPDATE.zip && unzip -p $OUT "UPDATE - READ ME.txt" > "$TMPDIR/readme.txt" && rm $OUT && git archive --format`
+
+  <details><summary>output</summary>
+
+```
+MANUAL BATCHING - UPDATE (2026-10-13)
+=====================================
+
+New in this update
+- UV Mix: Custom artwork - upload images or a link, type the name for the die, set copies
+  -> File, Die (cut at the exact image size), Spot PDFs + Excel.
+- Sublimation: Artworks per sheet (1, 2 ... or full sheet) for fewer nesting jigs.
+- Sublimation: Custom artwork sheets with 2x1 labels, item  …
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 05:58
+
+Sublimation batches now have an **Artworks per sheet** option. It's live on your Mac (refresh the page) and pushed to git.
+
+**How it works:**
+- A new dropdown sits next to Template / Export / Flip on every Sublimation batch, both order barcodes and Custom artwork.
+- The choices are **All 6 (full sheet)**, the default, or **1, 2, 3, 4 or 5 per sheet**. Other templates offer as many choices as they have slots.
+- Fewer artworks fill the **first slots in order**: top-left, top-right, middle-left, and so on. The other slots stay empty, and no names are printed there.
+- The sheet count, the S1-1 / S1-2 positions, the labels and the Excel all follow your choice. For example, 5 artworks at 2 per sheet gives 3 PDFs, with labels of 2, 2 and 1.
+
+**Tested on your Mac through the server:**
+- Custom artwork, 5 copies at 2 per sheet: 3 sheets. Sheet 1 had artwork in the top-left and top-right slots only.
+- Real Bold barcodes at 1 per sheet: 3 sheets, one artwork each.
+
+I deleted both test batches afterwards. I haven't clicked through the new dropdown on the screen myself.
+
+**Needs your check:** I assumed your 2 jigs sit in the **top two positions**. If they sit somewhere else, for example top-left and middle-left, tell me which slots to use. I can also let the team pick the exact positions.
+
+**For the teams:** I rebuilt `dist/Manual-Batching-UPDATE.zip` with this change. If you haven't sent the update yet, send this new one; the steps are the same.
+
+## 🧑 Rahul · 2026-10-13 06:02
+
+give me updated zip for tea,
+
+## 🤖 Claude · 2026-10-13 06:02
+
+- 🔧 **Bash** — Verify update ZIP is current and reveal in Finder
+  `cd ~/Dev/"Mix Batch UV" && git status --short | head -3; git log -1 --format=%h; ls -la dist/Manual-Batching-UPDATE.zip; unzip -p dist/Manual-Batching-UPDATE.zi`
+
+  <details><summary>output</summary>
+
+```
+370e51c
+-rw-r--r--@ 1 rahulverma  staff  1258190 Oct 13 00:58 dist/Manual-Batching-UPDATE.zip
+1
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 06:02
+
+The updated ZIP for the team is ready, and I've opened its folder in Finder:
+
+**`~/Dev/Mix Batch UV/dist/Manual-Batching-UPDATE.zip`** (1.2 MB)
+
+It has everything up to now, including UV custom artwork and the new Sublimation **Artworks per sheet** option. The same ZIP works for both the UV team and the Design team. It contains no passwords, so you can send it normally.
+
+**What the team does** (also in "UPDATE - READ ME.txt" inside the ZIP):
+1. Close the black portal window.
+2. Copy everything from the ZIP into their portal folder and choose **Replace the files**. Don't delete the folder first.
+3. Double-click **Setup.bat** once.
+4. Start with **Start Manual Batching.bat**, then press **Ctrl + F5** in the browser.
+
+Their login, settings and History stay as they are.
+
+## 🧑 Rahul · 2026-10-13 06:03
+
+ok push this to git
+
+## 🤖 Claude · 2026-10-13 06:03
+
+- 🔧 **Bash** — Confirm branch is in sync with GitHub
+  `cd ~/Dev/"Mix Batch UV" && git fetch -q origin && git status -sb | head -3`
+
+  <details><summary>output</summary>
+
+```
+## sublimation...origin/sublimation
+```
+</details>
+
+## 🤖 Claude · 2026-10-13 06:03
+
+Git was already up to date, so there was nothing new to push. The latest code is on GitHub on the `sublimation` branch (`370e51c`), and that's what the ZIP was built from.
+
+The update ZIP itself is not on GitHub, on purpose. Packages in `dist/` stay only on your Mac, and the ZIP can always be rebuilt from git. Send the team the copy in `dist/Manual-Batching-UPDATE.zip`.
+
+## 🧑 Rahul · 2026-10-13 06:09
+
+ok update our memory chat etc
+
+## 🤖 Claude · 2026-10-13 06:09
+
+- 🔧 **Bash** — Update notes, transcript, push both branches
+  `cd ~/Dev/"Mix Batch UV" && python3 - <<'EOF'`
