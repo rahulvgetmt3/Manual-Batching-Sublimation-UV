@@ -24,6 +24,8 @@ Get-Content ".env" | ForEach-Object {
 }
 # Local use: plain http, so cookies must not require https
 [Environment]::SetEnvironmentVariable("COOKIE_SECURE", "0", "Process")
+# Python reads/writes text as UTF-8 everywhere (Windows would otherwise default to cp1252)
+[Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Process")
 if (-not $env:SECRET_KEY) {
     [Environment]::SetEnvironmentVariable("SECRET_KEY", [guid]::NewGuid().ToString() + [guid]::NewGuid().ToString(), "Process")
 }

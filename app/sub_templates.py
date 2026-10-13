@@ -22,11 +22,12 @@ from pathlib import Path
 
 import pikepdf
 
-MM = 72 / 25.4
+from .layout import MM
+
 BUILTIN_DIR = Path(__file__).resolve().parent / "templates" / "sublimation"
 USER_DIR = Path(os.environ.get("TEMPLATES_DIR",
                                Path(__file__).resolve().parent.parent / "data" / "templates" / "sublimation"))
-NAME_SIZE = 15.08                 # pt; keep in step with sub_build
+NAME_SIZE = 15.08                 # pt, as in the team's reference (used by sub_build)
 CAP = 0.72 * NAME_SIZE            # approx. cap height: how far rotated text reaches left of its baseline
 PAINT = {"S", "s", "f", "F", "f*", "B", "B*", "b", "b*"}
 STROKE = {"S", "s", "B", "B*", "b", "b*"}

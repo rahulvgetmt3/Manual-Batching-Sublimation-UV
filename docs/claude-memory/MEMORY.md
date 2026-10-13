@@ -7,3 +7,4 @@
 - [Rahul profile](rahul-profile.md) — MT3 print ops, non-developer, verifies visually in Photoshop/Illustrator
 - [Pulse design system](pulse-design-system.md) — UI uses Pulse CSS verbatim (pulse-shell.css) + "Manual Batching" dropdown so it ports into Pulse; Segoe UI/Tahoma font
 - [Sublimation rules](sublimation-rules.md) — 6UP/6UP-EXT templates, Bold/Classic split by case type, mirrored+centred, names avoid reg marks, RGB/CMYK via SWOP, branch `sublimation`
+- [UV Inventory is separate](uv-inventory-separate.md) — inventory lives in ~/Dev/UV Inventory Model; this repo is UV + Sublimation batching only

@@ -588,7 +588,7 @@ function updateSheets(g) {
     const r = await fetch('/api/layout', { method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ pieces: list.flatMap(it => Array(it.custom ? Number(it.copies) || 1 : 1).fill({ label: it.label, w: it.w_pt, h: it.h_pt })) }) });
     const d = await r.json();
-    if (sheetCounts[g] !== d.sheets) { sheetCounts[g] = d.sheets; const el = $('sheets-' + gid(g)); if (el) el.textContent = d.sheets + ' bed sheet(s)'; }
+    if (sheetCounts[g] !== d.sheets) { sheetCounts[g] = d.sheets; const el = $('sheets-' + gid(g)); if (el) el.textContent = d.sheets + ' ' + PROC[proc].unit; }
   }, 150);
 }
 
@@ -617,7 +617,7 @@ $('batches').addEventListener('click', async e => {
     const g = gen.dataset.gen;
     gen.disabled = true; gen.textContent = 'Building PDFs…';
     const body = { barcodes: items.filter(it => groupOf(it) === g).map(it => it.component_barcode), process: proc };
-    if (proc === 'sub') Object.assign(body, optsFor(g), { per_sheet: usePer(g) });
+    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g) }); }
     if (g === 'CUSTOM') {
       body.barcodes = [];
       body.custom = items.filter(it => it.custom).map(it => ({ fetch_url: it.fetch_url, name: (it.name || '').trim() || 'Custom artwork', copies: Number(it.copies) || 1 }));

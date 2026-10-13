@@ -19,9 +19,10 @@ from pathlib import Path
 
 import pikepdf
 import segno
-from fontTools.pens.basePen import BasePen
 from fontTools.ttLib import TTFont
 from pikepdf import Array, Dictionary, Name
+
+from .pdf_build import _PdfPathPen
 
 PAGE_W, PAGE_H = 144.0, 72.0          # 2 x 1 inch
 DESIGN_W, DESIGN_H = 1132.0, 566.0    # SiteFlow template px
@@ -49,27 +50,6 @@ def _font(weight):
     return _FONTS[name]
 
 
-class _Pen(BasePen):
-    def __init__(self, glyphs, scale, x0, y0):
-        super().__init__(glyphs)
-        self.ops, self.s, self.x0, self.y0 = [], scale, x0, y0
-
-    def _p(self, p):
-        return f"{self.x0 + p[0] * self.s:.3f} {self.y0 + p[1] * self.s:.3f}"
-
-    def _moveTo(self, p):
-        self.ops.append(f"{self._p(p)} m")
-
-    def _lineTo(self, p):
-        self.ops.append(f"{self._p(p)} l")
-
-    def _curveToOne(self, a, b, c):
-        self.ops.append(f"{self._p(a)} {self._p(b)} {self._p(c)} c")
-
-    def _closePath(self):
-        self.ops.append("h")
-
-
 def _width(text, size_px, weight):
     glyphs, cmap, upm = _font(weight)
     return sum(glyphs[cmap.get(ord(c), ".notdef")].width for c in text) * size_px / upm
@@ -83,7 +63,7 @@ def _text(text, x_px, baseline_px, size_px, weight, gray=0.0):
     y = PAGE_H - baseline_px * K
     for ch in text:
         g = cmap.get(ord(ch), ".notdef")
-        pen = _Pen(glyphs, scale, x, y)
+        pen = _PdfPathPen(scale, x, y, glyphs)
         glyphs[g].draw(pen)
         ops += pen.ops
         x += glyphs[g].width * scale
@@ -124,71 +104,63 @@ def _qr(data, x_px, y_top_px, size_px):
     return "0 g " + " ".join(rects) + " f"
 
 
-def label_ops(it, copy_no=1):
-    """Drawing operators for one item label. `it` is a pulse.Item."""
-    ops = []
-    inner_l, inner_r = PAD_L, DESIGN_W - PAD_R
-    width = inner_r - inner_l
+def _header(ops, head, tag, head_px, tag_px, head_share):
+    """Line 1: bold head (order number / run id) + grey ' | …' tag. Returns the next y."""
+    width = DESIGN_W - PAD_R - PAD_L
+    s1 = _fit(head, head_px, "black", width * head_share)
+    s2 = _fit(tag, tag_px, "bold", width - _width(head, s1, "black"))
+    base = PAD_T + s1 * 0.95
+    ops.append(_text(head, PAD_L, base, s1, "black"))
+    ops.append(_text(tag, PAD_L + _width(head, s1, "black"), base, s2, "bold", gray=0x44 / 255))
+    return PAD_T + s1 * 1.2 + 9
 
-    # line 1: order number (57px, 900) + " | From | Code" (45px, 700, #444)
-    y = PAD_T
-    order = it.order_number or ""
-    tag = f" | {FROM_NAMES.get(it.source, it.source)} | {it.print_code or '-'}"
-    s1 = _fit(order, 57, "black", width * 0.45)
-    s2 = _fit(tag, 45, "bold", width - _width(order, s1, "black"))
-    base = y + s1 * 0.95
-    ops.append(_text(order, inner_l, base, s1, "black"))
-    ops.append(_text(tag, inner_l + _width(order, s1, "black"), base, s2, "bold", gray=0x44 / 255))
-    y += s1 * 1.2 + 9
 
-    # line 2: description, upper case, 54px 900, line-height 1.1, wraps to 2 lines
-    lines = _wrap((it.description or "").upper(), 54, "black", width)
+def _description(ops, text, y):
+    """Line 2: upper case, 54px 900, line-height 1.1, wraps to 2 lines; then the 3px divider."""
+    inner_r, width = DESIGN_W - PAD_R, DESIGN_W - PAD_R - PAD_L
+    lines = _wrap(text.upper(), 54, "black", width)
     size = min(_fit(ln, 54, "black", width) for ln in lines) if lines else 54
     for ln in lines:
-        ops.append(_text(ln, inner_l, y + size * 0.92, size, "black"))
+        ops.append(_text(ln, PAD_L, y + size * 0.92, size, "black"))
         y += size * 1.1
     y += 6
-
-    # divider (3px) across the full width
-    ops.append(f"0 G {3 * K:.3f} w {inner_l * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} m "
+    ops.append(f"0 G {3 * K:.3f} w {PAD_L * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} m "
                f"{inner_r * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} l S")
-    y += 3 + 6
+    return y + 3 + 6
 
-    left_w = width - RIGHT_COL
+
+def _qty_and_qr(ops, qty_top, qty_text, y, qr_data, caption, caption_px):
+    """QTY n / m on the left at qty_top; QR in the right column at y with its caption underneath."""
+    qty_base = qty_top + 69 * 0.95
+    ops.append(_text("QTY", PAD_L, qty_base, 27, "bold", gray=0x55 / 255))
+    ops.append(_text(qty_text, PAD_L + _width("QTY", 27, "bold") + 14, qty_base, 69, "black"))
+    qr_x = DESIGN_W - PAD_R - QR_PX
+    ops.append(_qr(qr_data, qr_x, y, QR_PX))
+    ops.append(_text(caption, qr_x + QR_PX / 2 - _width(caption, caption_px, "black") / 2,
+                     y + QR_PX + 3 + caption_px, caption_px, "black"))
+
+
+def label_ops(it):
+    """Drawing operators for one item label. `it` is a pulse.Item."""
+    ops = []
+    left_w = DESIGN_W - PAD_R - PAD_L - RIGHT_COL
+    order = it.order_number or ""
+    y = _header(ops, order, f" | {FROM_NAMES.get(it.source, it.source)} | {it.print_code or '-'}", 57, 45, 0.45)
+    y = _description(ops, it.description or "", y)
     # item (51px, 700, #222, upper) / customer name (48px, 900) / QTY
     item = (it.item_type or "").upper()
     s = _fit(item, 51, "bold", left_w)
-    ops.append(_text(item, inner_l, y + s * 0.95, s, "bold", gray=0x22 / 255))
+    ops.append(_text(item, PAD_L, y + s * 0.95, s, "bold", gray=0x22 / 255))
     yl = y + s * 1.2 + 9
     name = it.customer_name or ""
     s = _fit(name, 48, "black", left_w)
-    ops.append(_text(name, inner_l, yl + s * 0.95, s, "black"))
+    ops.append(_text(name, PAD_L, yl + s * 0.95, s, "black"))
     yl += s * 1.2
-    qty_base = yl + 69 * 0.95
-    ops.append(_text("QTY", inner_l, qty_base, 27, "bold", gray=0x55 / 255))
     q = max(1, int(it.quantity or 1))
-    ops.append(_text(f"{min(copy_no, q)} / {q}", inner_l + _width("QTY", 27, "bold") + 14, qty_base, 69, "black"))
-
     # right column: QR of the component barcode, item barcode text under it
-    qr_x = inner_r - QR_PX
-    ops.append(_qr(it.component_barcode, qr_x, y, QR_PX))
     bc = it.item_barcode or it.component_barcode
-    s = _fit(bc, 20, "black", RIGHT_COL)
-    ops.append(_text(bc, qr_x + QR_PX / 2 - _width(bc, s, "black") / 2, y + QR_PX + 3 + s, s, "black"))
+    _qty_and_qr(ops, yl, f"1 / {q}", y, it.component_barcode, bc, _fit(bc, 20, "black", RIGHT_COL))
     return "\n".join(o for o in ops if o)
-
-
-def build_labels(items, out_path, title):
-    """One label per piece (page), in the order given (= slot order on the sheet)."""
-    pdf = pikepdf.new()
-    pdf.docinfo[Name.Title] = title
-    pdf.docinfo[Name.Creator] = "MT3 Manual Batching"
-    box = Array([0, 0, PAGE_W, PAGE_H])
-    for it in items:
-        pdf.pages.append(pikepdf.Page(Dictionary(
-            Type=Name.Page, MediaBox=box, CropBox=box, TrimBox=box,
-            Contents=pdf.make_stream(label_ops(it).encode("latin-1")), Resources=Dictionary())))
-    pdf.save(out_path, min_version="1.6")
 
 
 def custom_label_ops(e):
@@ -200,39 +172,17 @@ def custom_label_ops(e):
          QTY 2 / 4                                 S1-3
     e: {run_id, pos, name, copy_no, copies}"""
     ops = []
-    inner_l, inner_r = PAD_L, DESIGN_W - PAD_R
-    width = inner_r - inner_l
-    y = PAD_T
-    head, tag = e["run_id"], " | Custom artwork"
-    s1 = _fit(head, 45, "black", width * 0.62)
-    base = y + s1 * 0.95
-    ops.append(_text(head, inner_l, base, s1, "black"))
-    ops.append(_text(tag, inner_l + _width(head, s1, "black"), base, _fit(tag, 40, "bold", width - _width(head, s1, "black")),
-                     "bold", gray=0x44 / 255))
-    y += s1 * 1.2 + 9
-    lines = _wrap((e["name"] or "Custom artwork").upper(), 54, "black", width)
-    size = min(_fit(ln, 54, "black", width) for ln in lines) if lines else 54
-    for ln in lines:
-        ops.append(_text(ln, inner_l, y + size * 0.92, size, "black"))
-        y += size * 1.1
-    y += 6
-    ops.append(f"0 G {3 * K:.3f} w {inner_l * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} m "
-               f"{inner_r * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} l S")
-    y += 3 + 6
-    sheet = f"SHEET {e['pos']}"
-    ops.append(_text(sheet, inner_l, y + 51 * 0.95, 51, "bold", gray=0x22 / 255))
-    yl = y + 51 * 1.2 + 9
-    qty_base = yl + 69 * 0.95
-    ops.append(_text("QTY", inner_l, qty_base, 27, "bold", gray=0x55 / 255))
-    ops.append(_text(f"{e['copy_no']} / {e['copies']}", inner_l + _width("QTY", 27, "bold") + 14, qty_base, 69, "black"))
-    qr_x = inner_r - QR_PX
-    ops.append(_qr(f"{e['run_id']}|{e['pos']}|{e['name']}", qr_x, y, QR_PX))
-    ops.append(_text(e["pos"], qr_x + QR_PX / 2 - _width(e["pos"], 20, "black") / 2, y + QR_PX + 3 + 20, 20, "black"))
+    y = _header(ops, e["run_id"], " | Custom artwork", 45, 40, 0.62)
+    y = _description(ops, e["name"] or "Custom artwork", y)
+    ops.append(_text(f"SHEET {e['pos']}", PAD_L, y + 51 * 0.95, 51, "bold", gray=0x22 / 255))
+    _qty_and_qr(ops, y + 51 * 1.2 + 9, f"{e['copy_no']} / {e['copies']}", y,
+                f"{e['run_id']}|{e['pos']}|{e['name']}", e["pos"], 20)
     return "\n".join(o for o in ops if o)
 
 
-def build_custom_labels(entries, out_path, title):
-    """One basic label per custom piece (page), in slot order."""
+def build_labels(entries, out_path, title, ops_fn=label_ops):
+    """One 2x1 label per piece (page), in the order given (= slot order on the sheet).
+    ops_fn: label_ops for Pulse items, custom_label_ops for custom artwork entries."""
     pdf = pikepdf.new()
     pdf.docinfo[Name.Title] = title
     pdf.docinfo[Name.Creator] = "MT3 Manual Batching"
@@ -240,5 +190,5 @@ def build_custom_labels(entries, out_path, title):
     for e in entries:
         pdf.pages.append(pikepdf.Page(Dictionary(
             Type=Name.Page, MediaBox=box, CropBox=box, TrimBox=box,
-            Contents=pdf.make_stream(custom_label_ops(e).encode("latin-1", "replace")), Resources=Dictionary())))
+            Contents=pdf.make_stream(ops_fn(e).encode("latin-1", "replace")), Resources=Dictionary())))
     pdf.save(out_path, min_version="1.6")

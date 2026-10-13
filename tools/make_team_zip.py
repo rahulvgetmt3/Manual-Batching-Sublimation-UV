@@ -35,7 +35,7 @@ def main():
     args = ap.parse_args()
     out_zip = ROOT / "dist" / args.out
     db = {"DB_HOST": "pulse.getmt3.com", "DB_PORT": "3306", "DB_NAME": "mt3narada"}
-    for line in PULSE_ENV.read_text().splitlines():
+    for line in PULSE_ENV.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if "=" in line and not line.startswith("#"):
             k, v = line.split("=", 1)

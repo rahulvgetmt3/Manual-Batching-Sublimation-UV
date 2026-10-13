@@ -260,8 +260,9 @@ def thumb(url: str, request: Request):
     if not t.exists():
         with Image.open(path) as im:
             im.thumbnail((160, 320))
+            rgba = im.convert("RGBA")
             bg = Image.new("RGB", im.size, "white")
-            bg.paste(im.convert("RGBA"), mask=im.convert("RGBA").getchannel("A"))
+            bg.paste(rgba, mask=rgba.getchannel("A"))
             bg.save(t, "JPEG", quality=80)
     return FileResponse(t, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
 

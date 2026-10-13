@@ -33,8 +33,8 @@ _UPM = _FONT["head"].unitsPerEm
 class _PdfPathPen(BasePen):
     """Collects glyph outlines as PDF path operators, scaled and positioned."""
 
-    def __init__(self, scale, x0, y0):
-        super().__init__(_GLYPHS)
+    def __init__(self, scale, x0, y0, glyphs=None):
+        super().__init__(glyphs or _GLYPHS)
         self.ops, self.s, self.x0, self.y0 = [], scale, x0, y0
 
     def _pt(self, p):
@@ -215,7 +215,7 @@ def _layers(pdf, names_on_off):
 
 
 def build_pdfs(placements, pieces, file_path, die_path, title):
-    """pieces[i] needs: path, label. Writes the File and Die PDFs (spot is a PSD, see psd_build)."""
+    """pieces[i] needs: path, label. Writes the File and Die PDFs (the Spot PDF is spot_pdf.py)."""
     sheets = sorted({p.sheet for p in placements})
 
     # File PDF: artwork only, no labels

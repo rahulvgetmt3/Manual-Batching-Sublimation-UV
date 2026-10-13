@@ -60,14 +60,33 @@ COLUMNS = [
 ]
 
 
+def _dark_header(ws):
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="1F2937")
+
+
+def write_custom_manifest(rows, path, title):
+    """Custom artwork batch: one row per piece (no Pulse order data)."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pieces"
+    ws.append(["Sheet", "Position", "Name on sheet", "Width mm", "Height mm", "Fit to slot", "Source file"])
+    _dark_header(ws)
+    for r in rows:
+        ws.append(r)
+    for col, w in zip("ABCDEFG", (7, 9, 40, 10, 10, 10, 40)):
+        ws.column_dimensions[col].width = w
+    wb.properties.title = title
+    wb.save(path)
+
+
 def write_manifest(placements, items, path, title):
     wb = Workbook()
     _reconcile_sheet(wb.active, placements, items)
     ws = wb.create_sheet("Pieces")
     ws.append([c[0] for c in COLUMNS])
-    for cell in ws[1]:
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill("solid", fgColor="1F2937")
+    _dark_header(ws)
     for p in placements:
         ws.append([fn(items[p.index], p) for _, fn in COLUMNS])
     widths = [7, 9, 10, 14, 14, 26, 18, 14, 14, 22, 26, 20, 24, 12, 13, 12, 8, 22, 18, 10, 10, 60]

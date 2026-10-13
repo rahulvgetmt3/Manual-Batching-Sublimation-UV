@@ -26,22 +26,17 @@ from pikepdf import Array, Dictionary, Name
 from PIL import Image, ImageCms
 
 from .pdf_build import _GLYPHS, _CMAP, _UPM, _PdfPathPen, _image_xobject
-from .sub_templates import BUILTIN_DIR, registry
+from .layout import MM
+from .sub_templates import BUILTIN_DIR, NAME_SIZE
 
 Image.MAX_IMAGE_PIXELS = None
 
-MM = 72 / 25.4
-NAME_SIZE = 15.08            # pt, as in the team's reference
 NAME_MARGIN = 6 * MM         # keep names this far inside the slot height
 
 _SRGB = ImageCms.createProfile("sRGB")
 _SWOP = ImageCms.ImageCmsProfile(str(BUILTIN_DIR / "swop.icc"))
 _FLAGS = ImageCms.Flags.BLACKPOINTCOMPENSATION
 _INTENT = ImageCms.Intent.RELATIVE_COLORIMETRIC
-
-
-def slots_per_sheet(template):
-    return len(registry()[template]["slots"])
 
 
 def image_mode(path):
@@ -96,11 +91,26 @@ def _converted_xobject(pdf, path, target):
     return _flate_image(pdf, out.tobytes(), out.width, out.height, cs, smask)
 
 
-def artwork_xobject(pdf, path, color):
+def artwork_xobject(pdf, path, color, mode=None):
     """Untouched when the file is already in the chosen mode, else converted."""
-    if image_mode(path) == color:
-        return _image_xobject(pdf, str(path)), False
-    return _converted_xobject(pdf, path, color), True
+    if (mode or image_mode(path)) == color:
+        return _image_xobject(pdf, str(path))
+    return _converted_xobject(pdf, path, color)
+
+
+class ArtCache:
+    """Each artwork decoded / converted / compressed once per batch; sheets copy the finished stream
+    (pikepdf copies the compressed bytes as they are). Holds one scratch PDF for the batch."""
+
+    def __init__(self, color):
+        self.color, self.pdf, self.xobjects = color, pikepdf.new(), {}
+
+    def get(self, piece):
+        key = str(piece["path"])
+        if key not in self.xobjects:
+            xo = artwork_xobject(self.pdf, piece["path"], self.color, piece.get("src_mode"))
+            self.xobjects[key] = self.pdf.make_indirect(xo)
+        return self.xobjects[key]
 
 
 def _name_outline(text, x_baseline, slot_y0, slot_y1):
@@ -121,45 +131,45 @@ def _name_outline(text, x_baseline, slot_y0, slot_y1):
     return f"q 0 1 -1 0 {x_baseline:.3f} {start:.3f} cm " + " ".join(ops) + " f Q"
 
 
-def build_sheet(template, color, pieces, out_path, title, mirror=True):
-    """pieces: up to one per slot, dicts {path, w_pt, h_pt, name}; filled in slot order
-    (top row first, left to right). Returns a list of warnings (artwork larger than its slot)."""
-    tpl = registry()[template]
-    src = pikepdf.open(tpl["pdf"])
-    pdf = pikepdf.new()
-    pdf.pages.append(src.pages[0])
-    if "/OCProperties" in src.Root:
-        pdf.Root.OCProperties = pdf.copy_foreign(src.make_indirect(src.Root.OCProperties))
-    page = pdf.pages[0]
-    pdf.docinfo[Name.Title] = title
-    pdf.docinfo[Name.Creator] = "MT3 Manual Batching"
+def build_sheet(tpl, color, pieces, out_path, title, mirror=True, art=None):
+    """tpl: a template from registry(). pieces: up to one per slot, dicts {path, w_pt, h_pt, name};
+    filled in slot order (top row first, left to right). art: the batch's ArtCache (one is made if
+    not given). Returns a list of warnings (artwork larger than its slot)."""
+    art = art or ArtCache(color)
+    with pikepdf.open(tpl["pdf"]) as src:   # kept open until saved: page content is copied lazily
+        pdf = pikepdf.new()
+        pdf.pages.append(src.pages[0])
+        if "/OCProperties" in src.Root:
+            pdf.Root.OCProperties = pdf.copy_foreign(src.make_indirect(src.Root.OCProperties))
+        page = pdf.pages[0]
+        pdf.docinfo[Name.Title] = title
+        pdf.docinfo[Name.Creator] = "MT3 Manual Batching"
 
-    res = page.Resources
-    if Name.XObject not in res:
-        res.XObject = Dictionary()
-    ops, warnings, cache = ["0 0 0 1 k"], [], {}
-    for i, pc in enumerate(pieces[:len(tpl["slots"])]):
-        sx, sy, sw, sh = tpl["slots"][i]
-        key = str(pc["path"])
-        if key not in cache:
-            xo, _ = artwork_xobject(pdf, pc["path"], color)
-            cache[key] = (f"SubIm{len(cache)}", pdf.make_indirect(xo))
-        name, xo = cache[key]
-        res.XObject[Name("/" + name)] = xo
-        w, h = pc["w_pt"], pc["h_pt"]
-        if pc.get("fit"):  # custom artwork: scale proportionally to fit the slot (never stretched)
-            k = min(sw / w, sh / h)
-            w, h = w * k, h * k
-        cx, cy = sx + sw / 2, sy + sh / 2
-        x0, y0 = cx - w / 2, cy - h / 2
-        if w > sw + 0.5 or h > sh + 0.5:
-            warnings.append(f"slot {i + 1}: artwork {w / MM:.1f} x {h / MM:.1f} mm is larger than the slot "
-                            f"{sw / MM:.1f} x {sh / MM:.1f} mm")
-        if mirror:  # flipped horizontally: x scale negative, origin on the right edge
-            ops.append(f"q {-w:.4f} 0 0 {h:.4f} {x0 + w:.4f} {y0:.4f} cm /{name} Do Q")
-        else:
-            ops.append(f"q {w:.4f} 0 0 {h:.4f} {x0:.4f} {y0:.4f} cm /{name} Do Q")
-        ops.append(_name_outline(pc["name"], tpl["names"][i]["x"], sy, sy + sh))
-    page.contents_add(pdf.make_stream(("\n".join(ops)).encode("latin-1")), prepend=False)
-    pdf.save(out_path, min_version="1.6")
+        res = page.Resources
+        if Name.XObject not in res:
+            res.XObject = Dictionary()
+        ops, warnings, names = ["0 0 0 1 k"], [], {}
+        for i, pc in enumerate(pieces[:len(tpl["slots"])]):
+            sx, sy, sw, sh = tpl["slots"][i]
+            key = str(pc["path"])
+            if key not in names:
+                names[key] = f"SubIm{len(names)}"
+                res.XObject[Name("/" + names[key])] = pdf.copy_foreign(art.get(pc))
+            name = names[key]
+            w, h = pc["w_pt"], pc["h_pt"]
+            if pc.get("fit"):  # custom artwork: scale proportionally to fit the slot (never stretched)
+                k = min(sw / w, sh / h)
+                w, h = w * k, h * k
+            cx, cy = sx + sw / 2, sy + sh / 2
+            x0, y0 = cx - w / 2, cy - h / 2
+            if w > sw + 0.5 or h > sh + 0.5:
+                warnings.append(f"slot {i + 1}: artwork {w / MM:.1f} x {h / MM:.1f} mm is larger than the slot "
+                                f"{sw / MM:.1f} x {sh / MM:.1f} mm")
+            if mirror:  # flipped horizontally: x scale negative, origin on the right edge
+                ops.append(f"q {-w:.4f} 0 0 {h:.4f} {x0 + w:.4f} {y0:.4f} cm /{name} Do Q")
+            else:
+                ops.append(f"q {w:.4f} 0 0 {h:.4f} {x0:.4f} {y0:.4f} cm /{name} Do Q")
+            ops.append(_name_outline(pc["name"], tpl["names"][i]["x"], sy, sy + sh))
+        page.contents_add(pdf.make_stream(("\n".join(ops)).encode("latin-1")), prepend=False)
+        pdf.save(out_path, min_version="1.6")
     return warnings

@@ -87,9 +87,7 @@ def item_for(key, name):
     """Item dict in the same shape the UI uses for Pulse items (no order data)."""
     path = cached_path(key)
     info = image_info(path)
-    dpi = info["dpi"][0]
-    with Image.open(path) as im:
-        mode = "CMYK" if im.mode == "CMYK" else "RGB"
+    dpi, mode = info["dpi"][0], info["mode"]
     cid = "CUSTOM-" + key.split("//", 1)[1].split(".")[0][:10].upper()
     return {
         "custom": True, "component_barcode": cid, "item_barcode": "", "fetch_url": key,

@@ -32,27 +32,27 @@ class LookupError_(Exception):
 
 @dataclass
 class Item:
-    component_barcode: str
-    item_barcode: str
-    fetch_url: str
-    sku: str
-    model: str
-    case_type: str
-    batch_imposition: str
-    print_code: str
-    print_sku: str
-    hp_order_id: str
-    order_number: str
-    source: str
-    batch_number: str
-    job_status: str
-    order_status: str
-    item_status: str
-    reprint: bool
-    reprint_reason: str
-    status_updated: str
-    line: str
-    label: str
+    component_barcode: str = ""
+    item_barcode: str = ""
+    fetch_url: str = ""
+    sku: str = ""
+    model: str = ""
+    case_type: str = ""
+    batch_imposition: str = ""
+    print_code: str = ""
+    print_sku: str = ""
+    hp_order_id: str = ""
+    order_number: str = ""
+    source: str = ""
+    batch_number: str = ""
+    job_status: str = ""
+    order_status: str = ""
+    item_status: str = ""
+    reprint: bool = False
+    reprint_reason: str = ""
+    status_updated: str = ""
+    line: str = ""
+    label: str = ""
     reconcile_model: str = ""
     family: str = ""
     description: str = ""     # label: product description (SiteFlow 'Description')
