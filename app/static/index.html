@@ -630,7 +630,7 @@ $('batches').addEventListener('click', async e => {
         ? ` · ${TPL_NAME[d.template]}${d.slots && d.per_sheet < d.slots ? ` · ${d.per_sheet} per sheet` : ''} · ${d.color} · ${d.mirror ? 'mirrored' : 'not mirrored'}${d.custom ? (d.fit ? ' · fit to slot' : ' · actual size') : ''}${d.converted ? ` · ${d.converted} file(s) converted to ${d.color}` : ''}`
           + (d.warnings && d.warnings.length ? `<br><span style="color:var(--warning)">⚠ ${d.warnings.map(esc).join('<br>⚠ ')}</span>` : '')
         : '';
-      runResults[proc][g] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${extra}${dlButtons(d)}`;
+      runResults[proc][g] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${d.batches ? ` · batch ${d.batches.map((b, i) => `S${i + 1} = <b>${esc(b)}</b>`).join(', ')}` : ''}${extra}${dlButtons(d)}`;
       items = items.filter(it => groupOf(it) !== g); store[proc] = items; save(); render(); loadHistory();
     } catch (err) {
       const el = $('err-' + gid(g)); el.textContent = err.message; el.style.display = 'block';

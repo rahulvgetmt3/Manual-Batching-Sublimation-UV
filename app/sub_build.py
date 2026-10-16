@@ -25,6 +25,7 @@ import pikepdf
 from pikepdf import Array, Dictionary, Name
 from PIL import Image, ImageCms
 
+from .labels import text_outline as _bold_outline
 from .pdf_build import _GLYPHS, _CMAP, _UPM, _PdfPathPen, _image_xobject
 from .layout import MM
 from .sub_templates import BUILTIN_DIR, NAME_SIZE
@@ -32,6 +33,12 @@ from .sub_templates import BUILTIN_DIR, NAME_SIZE
 Image.MAX_IMAGE_PIXELS = None
 
 NAME_MARGIN = 6 * MM         # keep names this far inside the slot height
+
+# Sheet batch number: red, just right of the colour bar, like SiteFlow prints its batch ID (Rahul, 2026-10-16).
+BATCH_SIZE = 22              # pt
+BATCH_RED = "0 1 1 0 k"      # CMYK red
+# Built-in templates: (x where the colour bar ends, distance from the page top to the bar's bottom), in pt.
+BATCH_AT = {"6UP": (566.0, 34.4), "6UP-EXT": (560.0, 37.4)}
 
 _SRGB = ImageCms.createProfile("sRGB")
 _SWOP = ImageCms.ImageCmsProfile(str(BUILTIN_DIR / "swop.icc"))
@@ -131,10 +138,24 @@ def _name_outline(text, x_baseline, slot_y0, slot_y1):
     return f"q 0 1 -1 0 {x_baseline:.3f} {start:.3f} cm " + " ".join(ops) + " f Q"
 
 
-def build_sheet(tpl, color, pieces, out_path, title, mirror=True, art=None):
+def _batch_number(tpl, text):
+    """The sheet's batch number in red. Built-in templates: just right of the colour bar, sitting on
+    its baseline. Uploaded templates: top right, right-aligned to the slots, in the gap above them."""
+    page_w, page_h = tpl["page"]
+    if tpl.get("builtin") and tpl.get("key") in BATCH_AT:
+        x, from_top = BATCH_AT[tpl["key"]]
+        return f"{BATCH_RED} " + _bold_outline(text, x + 6, page_h - from_top, BATCH_SIZE)
+    top = max(sy + sh for _, sy, _, sh in tpl["slots"])
+    right = max(sx + sw for sx, _, sw, _ in tpl["slots"])
+    size = max(6.0, min(BATCH_SIZE, (page_h - top) * 0.6))
+    return f"{BATCH_RED} " + _bold_outline(text, right, top + (page_h - top - size * 0.72) / 2, size, align="right")
+
+
+def build_sheet(tpl, color, pieces, out_path, title, mirror=True, art=None, batch=None):
     """tpl: a template from registry(). pieces: up to one per slot, dicts {path, w_pt, h_pt, name};
     filled in slot order (top row first, left to right). art: the batch's ArtCache (one is made if
-    not given). Returns a list of warnings (artwork larger than its slot)."""
+    not given). batch: the sheet's batch number, printed in red at the top. Returns a list of
+    warnings (artwork larger than its slot)."""
     art = art or ArtCache(color)
     with pikepdf.open(tpl["pdf"]) as src:   # kept open until saved: page content is copied lazily
         pdf = pikepdf.new()
@@ -170,6 +191,8 @@ def build_sheet(tpl, color, pieces, out_path, title, mirror=True, art=None):
             else:
                 ops.append(f"q {w:.4f} 0 0 {h:.4f} {x0:.4f} {y0:.4f} cm /{name} Do Q")
             ops.append(_name_outline(pc["name"], tpl["names"][i]["x"], sy, sy + sh))
+        if batch:
+            ops.append(_batch_number(tpl, batch))
         page.contents_add(pdf.make_stream(("\n".join(ops)).encode("latin-1")), prepend=False)
         pdf.save(out_path, min_version="1.6")
     return warnings

@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import threading
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -25,6 +26,24 @@ RUNS_DIR = Path(os.environ.get("RUNS_DIR", Path(__file__).resolve().parent.paren
 
 def _safe(s):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
+
+
+_BATCH_LOCK = threading.Lock()
+
+
+def _new_batch_numbers(n):
+    """Reserve n sheet batch numbers MB00001, MB00002, … (one per Sublimation sheet). The last one used
+    is kept in RUNS_DIR/batch_counter.txt, so numbers never repeat. 'MB' (Manual Batching) keeps
+    them apart from SiteFlow's all-digit batch IDs."""
+    path = RUNS_DIR / "batch_counter.txt"
+    with _BATCH_LOCK:
+        RUNS_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            last = int(path.read_text(encoding="utf-8").strip() or 0)
+        except (FileNotFoundError, ValueError):
+            last = 0
+        path.write_text(str(last + n), encoding="utf-8")
+    return [f"MB{last + i:05d}" for i in range(1, n + 1)]
 
 
 RUN_ID_RE = re.compile(r"(UV|SUB)_[A-Z0-9_-]+_\d{8}_\d+")   # a run folder name (no path separators)
@@ -199,21 +218,29 @@ def _sub_options(template, color, per_sheet):
     return tpl, template, color, per_sheet, meta
 
 
-def _sub_sheets(out, run_id, tpl, color, pieces, per_sheet, mirror, labels):
+def _sub_sheets(out, run_id, tpl, color, pieces, per_sheet, mirror, labels, route):
     """One sheet PDF + one label PDF per `per_sheet` pieces. labels(chunk, s, start) -> (entries, ops_fn).
-    -> (sheet_pdfs, label_pdfs, warnings)."""
+    Each sheet gets its own batch number, printed in red on the sheet and on the first page of its
+    label PDF (route: Bold / Classic / Essential / Custom). -> (sheet_pdfs, label_pdfs, warnings, batches)."""
     art = ArtCache(color)   # each artwork converted once for the whole batch
     sheet_pdfs, label_pdfs, warnings = [], [], []
-    for s, start in enumerate(range(0, len(pieces), per_sheet), 1):
-        chunk = pieces[start:start + per_sheet]
+    starts = range(0, len(pieces), per_sheet)
+    batches = _new_batch_numbers(len(starts))
+    date = dt.datetime.now().strftime("%a %d %m %Y - %H:%M")
+    for s, start in enumerate(starts, 1):
+        chunk, batch = pieces[start:start + per_sheet], batches[s - 1]
         pdf_path = out / f"{run_id}_S{s}.pdf"
-        warnings += [f"sheet {s} {w}" for w in build_sheet(tpl, color, chunk, pdf_path, pdf_path.stem, mirror, art)]
+        warnings += [f"sheet {s} {w}" for w in
+                     build_sheet(tpl, color, chunk, pdf_path, pdf_path.stem, mirror, art, batch=batch)]
         lbl_path = out / f"{run_id}_S{s}_LABELS.pdf"
         entries, ops_fn = labels(chunk, s, start)
-        build_labels(entries, lbl_path, lbl_path.stem, ops_fn)
+        build_labels(entries, lbl_path, lbl_path.stem, ops_fn, batch={
+            "batch": batch, "route": route, "date": date, "qty": len(chunk),
+            "product": f"{route} {tpl['title'].replace('Sublimation ', '')}", "sheet": s, "sheets": len(starts),
+            "attributes": [color, "Mirrored" if mirror else "Not mirrored"], "file": pdf_path.name})
         sheet_pdfs.append(pdf_path)
         label_pdfs.append(lbl_path)
-    return sheet_pdfs, label_pdfs, warnings
+    return sheet_pdfs, label_pdfs, warnings, batches
 
 
 def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, per_sheet=0):
@@ -242,9 +269,9 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
 
     run_id, out = _new_run(f"{family}_{template}_{color}", prefix="SUB")
     # item labels: one 2x1" label per piece, in slot order (as HP SiteFlow prints them)
-    sheet_pdfs, label_pdfs, warnings = _sub_sheets(
+    sheet_pdfs, label_pdfs, warnings, batches = _sub_sheets(
         out, run_id, tpl, color, pieces, per_sheet, mirror,
-        lambda chunk, s, start: (items[start:start + len(chunk)], label_ops))
+        lambda chunk, s, start: (items[start:start + len(chunk)], label_ops), family.title())
     xlsx = out / f"{run_id}_manifest.xlsx"
     write_manifest(placements, items, xlsx, run_id)
     for p in placements:
@@ -252,7 +279,7 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
         name = f"S{p.sheet}-{p.position}_{it.batch_number}_{_safe(it.print_code)}_{it.component_barcode}{src.suffix}"
         shutil.copyfile(src, out / "files" / name)
     return _finish(out, {"process": "sub", **opts, "family": family, "mirror": bool(mirror), "user": user,
-                         "pieces": len(items), "sheets": len(sheet_pdfs),
+                         "pieces": len(items), "sheets": len(sheet_pdfs), "batches": batches,
                          "converted": sum(1 for pc in pieces if pc["src_mode"] != color),
                          "warnings": warnings, "barcodes": barcodes}, [*sheet_pdfs, *label_pdfs, xlsx])
 
@@ -266,11 +293,11 @@ def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", 
 
     run_id, out = _new_run(f"CUSTOM_{template}_{color}", prefix="SUB")
     # basic 2x1" labels from the table: text, sheet position, copy n / copies
-    sheet_pdfs, label_pdfs, warnings = _sub_sheets(
+    sheet_pdfs, label_pdfs, warnings, batches = _sub_sheets(
         out, run_id, tpl, color, pieces, per_sheet, mirror,
         lambda chunk, s, start: ([{"run_id": run_id, "pos": f"S{s}-{i + 1}", "name": pc["name"],
                                    "copy_no": pc["copy_no"], "copies": pc["copies"]} for i, pc in enumerate(chunk)],
-                                 custom_label_ops))
+                                 custom_label_ops), "Custom")
     xlsx = out / f"{run_id}_manifest.xlsx"
     write_custom_manifest([[i // per_sheet + 1, i % per_sheet + 1, pc["name"], round(pc["w_pt"] / MM, 1),
                             round(pc["h_pt"] / MM, 1), "yes" if fit else "", pc["path"].name]
@@ -278,7 +305,7 @@ def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", 
     for p in {pc["path"] for pc in pieces}:
         shutil.copyfile(p, out / "files" / p.name)
     return _finish(out, {"process": "sub", "custom": True, **opts, "family": "CUSTOM", "mirror": bool(mirror),
-                         "fit": bool(fit), "user": user, "pieces": len(pieces), "sheets": len(sheet_pdfs),
+                         "fit": bool(fit), "user": user, "pieces": len(pieces), "sheets": len(sheet_pdfs), "batches": batches,
                          "converted": sum(1 for pc in pieces if pc["src_mode"] != color), "warnings": warnings,
                          "artworks": _artworks(custom)}, [*sheet_pdfs, *label_pdfs, xlsx])
 

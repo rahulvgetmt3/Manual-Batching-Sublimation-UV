@@ -17,6 +17,7 @@ the QR as vector modules, so it prints sharp on a label printer with no fonts ne
 
 from pathlib import Path
 
+import barcode
 import pikepdf
 import segno
 from fontTools.ttLib import TTFont
@@ -68,6 +69,23 @@ def _text(text, x_px, baseline_px, size_px, weight, gray=0.0):
         ops += pen.ops
         x += glyphs[g].width * scale
     return f"{gray:.3f} g " + " ".join(ops) + " f" if ops else ""
+
+
+def text_outline(text, x, baseline, size, weight="black", align="left"):
+    """Filled outlines in plain PDF points (for the sheets): x is the left edge, or the right edge
+    with align='right'. No colour operator; the caller sets it."""
+    glyphs, cmap, upm = _font(weight)
+    scale = size / upm
+    if align == "right":
+        x -= _width(text, size, weight)
+    ops = []
+    for ch in text:
+        g = cmap.get(ord(ch), ".notdef")
+        pen = _PdfPathPen(scale, x, baseline, glyphs)
+        glyphs[g].draw(pen)
+        ops += pen.ops
+        x += glyphs[g].width * scale
+    return " ".join(ops) + " f" if ops else ""
 
 
 def _fit(text, size_px, weight, max_px):
@@ -180,15 +198,76 @@ def custom_label_ops(e):
     return "\n".join(o for o in ops if o)
 
 
-def build_labels(entries, out_path, title, ops_fn=label_ops):
+def _code128(data, x_px, y_top_px, w_px, h_px):
+    """Code 128 barcode as filled bars, stretched to w_px (the reader only needs the bar ratios)."""
+    modules = barcode.get("code128", data).build()[0]
+    cell = w_px * K / len(modules)
+    x0, y0, h = x_px * K, PAGE_H - (y_top_px + h_px) * K, h_px * K
+    bars, i = [], 0
+    while i < len(modules):
+        if modules[i] == "1":
+            j = i
+            while j < len(modules) and modules[j] == "1":
+                j += 1
+            bars.append(f"{x0 + i * cell:.3f} {y0:.3f} {(j - i) * cell:.3f} {h:.3f} re")
+            i = j
+        else:
+            i += 1
+    return "0 g " + " ".join(bars) + " f"
+
+
+def batch_label_ops(b):
+    """First page of each sheet's label PDF, like SiteFlow's batch label, so the operator knows
+    which labels belong to which sheet (the same number is printed in red on the sheet):
+         BATCH ID                              ||||||||||||||||||
+         MB00012                               ||||||||||||||||||
+         PRODUCTION ROUTE
+         ----------------------------------------------------------
+         Bold                                  Fri 16 10 2026 - 09:30
+         QTY  6   Product  Bold 6UP Extended
+         Sheet 1 of 3 · CMYK · Mirrored
+         SUB_BOLD_6UP-EXT_CMYK_20261016_01_S1
+    b: {batch, route, date, qty, product, sheet, sheets, attributes, file}"""
+    ops, grey = [], 0x44 / 255
+    inner_r, width = DESIGN_W - PAD_R, DESIGN_W - PAD_R - PAD_L
+    bc_w = 470   # ends 60 px from the edge: scanners need a quiet zone either side
+    ops.append(_code128(b["batch"], DESIGN_W - 60 - bc_w, PAD_T + 4, bc_w, 150))
+    ops.append(_text("BATCH ID", PAD_L, PAD_T + 32, 34, "bold", gray=grey))
+    s = _fit(b["batch"], 100, "black", width - bc_w - 30)
+    ops.append(_text(b["batch"], PAD_L, PAD_T + 42 + s * 0.95, s, "black"))
+    y = PAD_T + 42 + s * 1.15 + 34
+    ops.append(_text("PRODUCTION ROUTE", PAD_L, y, 30, "black", gray=grey))
+    y += 14
+    ops.append(f"0 G {3 * K:.3f} w {PAD_L * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} m "
+               f"{inner_r * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} l S")
+    y += 3 + 58
+    ops.append(_text(b["route"], PAD_L, y, 52, "black"))
+    ops.append(_text(b["date"], inner_r - _width(b["date"], 40, "bold"), y, 40, "bold", gray=0x22 / 255))
+    y += 84
+    ops.append(_text("QTY", PAD_L, y, 34, "bold", gray=grey))
+    ops.append(_text(str(b["qty"]), PAD_L + 110, y, 70, "black"))
+    px = PAD_L + 110 + _width(str(b["qty"]), 70, "black") + 50
+    ops.append(_text("Product", px, y, 34, "bold", gray=grey))
+    px += _width("Product", 34, "bold") + 24
+    ops.append(_text(b["product"], px, y, _fit(b["product"], 46, "black", inner_r - px), "black"))
+    y += 66
+    attrs = " · ".join([f"Sheet {b['sheet']} of {b['sheets']}", *b["attributes"]])
+    ops.append(_text(attrs, PAD_L, y, _fit(attrs, 42, "bold", width), "bold", gray=0x22 / 255))
+    ops.append(_text(b["file"], PAD_L, DESIGN_H - PAD_B - 4, _fit(b["file"], 28, "bold", width), "bold", gray=grey))
+    return "\n".join(o for o in ops if o)
+
+
+def build_labels(entries, out_path, title, ops_fn=label_ops, batch=None):
     """One 2x1 label per piece (page), in the order given (= slot order on the sheet).
-    ops_fn: label_ops for Pulse items, custom_label_ops for custom artwork entries."""
+    ops_fn: label_ops for Pulse items, custom_label_ops for custom artwork entries.
+    batch: details for batch_label_ops, printed as the first page."""
     pdf = pikepdf.new()
     pdf.docinfo[Name.Title] = title
     pdf.docinfo[Name.Creator] = "MT3 Manual Batching"
     box = Array([0, 0, PAGE_W, PAGE_H])
-    for e in entries:
+    pages = ([batch_label_ops(batch)] if batch else []) + [ops_fn(e) for e in entries]
+    for ops in pages:
         pdf.pages.append(pikepdf.Page(Dictionary(
             Type=Name.Page, MediaBox=box, CropBox=box, TrimBox=box,
-            Contents=pdf.make_stream(ops_fn(e).encode("latin-1", "replace")), Resources=Dictionary())))
+            Contents=pdf.make_stream(ops.encode("latin-1", "replace")), Resources=Dictionary())))
     pdf.save(out_path, min_version="1.6")
