@@ -32,6 +32,9 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 - [ ] Rahul or the team check the sheet PDFs in Illustrator and on the printer: mirroring, centring, names and RGB/CMYK.
 - [x] Confirmed 2026-10-12: Reconcile model = Pulse model name; any readable font for names; names may cross registration marks.
 - [ ] Merge into `main` and ship the update ZIP to the teams.
+- [ ] **Scan-test the Code 128 barcode** on the BATCH ID label (not scanned yet).
+- [ ] **Batch number counter is per PC** until hosting: two team PCs can both print MB00001. Decide if that's OK or change the format (e.g. date-based).
+- [ ] Optional: add the sheet batch number as a column in the Excel.
 
 **Known data issues**
 - [ ] **B433C9774F** (Mirror 17-P) returned 403 earlier, then downloaded fine later. Watch for other old printcloud `fetch_url`s.
@@ -42,10 +45,22 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 |---|---|---|---|
 | 2026-10-11 | Mac | `38c655b4` | HP and Pulse access check; Current Work counts; LUX file download; portal designed and built (scan, bulk, upload, LUX/Mirror batches, File/Die/Spot/Excel, history, login); fixes for full-bed bounding box, right-aligned layout, Spot as a Photoshop-style PDF (Alph block), RIP-safe Die, Reconcile `LUX-15-PL`; GitHub repo; Windows test package; team connected |
 | 2026-10-12 | Mac | `38c655b4` (same session) | Pulse theme (verbatim Pulse CSS, Manual Batching dropdown), layout fix, **Sublimation**: 6UP/6UP-EXT templates, mirrored/centred sheets, names, Bold/Classic/Essential, all models, CMYK/RGB, flip toggle, any-size uploadable templates; branch `sublimation` |
+| 2026-10-13 | Mac | `38c655b4` (same session) | Artworks per sheet, batching simplification, folder + GitHub repo renames |
+| 2026-10-13 → 16 | Mac | `a46c2f98` | Old chat recovered after the folder rename; README covers UV + Sublimation (both branches); **Sublimation sheet batch numbers** (red MB number on sheet + BATCH ID label page); team update ZIP |
 
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 
 ## Log
+
+### 2026-10-16: Sublimation sheet batch numbers
+- Rahul asked for a batch number top right of each Sublimation sheet, plus a page in the label PDF with the same number, so the operator knows which labels go with which sheet. He shared SiteFlow's current version (red batch ID beside the colour bar; BATCH ID label with barcode, route, date, QTY, product).
+- Built it (`548fc6d`): one `MB00001`-style number per sheet (counter in `data/runs/batch_counter.txt`), red beside the colour bar, and a BATCH ID first page in each `_S{n}_LABELS.pdf` with a Code 128 barcode (`python-barcode`, new requirement). Tested on 6UP and 6UP-EXT, Pulse and custom runs.
+- Rahul's first portal test failed because the Mac portal had been running since Tuesday on old code; restarted with `./start-mac.sh` and it worked.
+- Rebuilt `dist/Manual-Batching-UPDATE.zip` (no credentials) for both teams; **Setup.bat is required** this time for the new barcode library.
+
+### 2026-10-13: Old chat recovered, README for both processes
+- The old session (`38c655b4`) was stored under the previous folder name (`-Users-rahulverma-Dev-Mix-Batch-UV`), so it didn't show in `claude --resume` after the rename. Copied it into the new project folder and re-exported `chat/transcript.md`.
+- README rewritten to cover UV Mix and Sublimation (custom artwork, labels, artworks per sheet, history, team packages, new repo name); pushed to `sublimation` and `main` (`ba3fc30` / `8b71a0c`).
 
 ### 2026-10-13: Artworks per sheet (Sublimation)
 - Added an "Artworks per sheet" option (all slots, or 1 to 5 on 6UP) for printing on fewer nesting jigs. It fills the first slots: TL, TR and so on. Tested via the API: 5 copies at 2 per sheet gave 3 sheets with labels of 2, 2 and 1, and order barcodes at 1 per sheet gave 3 sheets.

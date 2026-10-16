@@ -3,8 +3,8 @@
 - [Photoshop spot channel](photoshop-spot-channel-psd.md) — spot = artwork alpha; Photoshop-style PDF needs Producer/XMP + private PieceInfo + Alph block; spot stored inverted (0 = ink)
 - [PDF full-bed bounding box](pdf-full-bed-bounding-box.md) — invisible 0%-opacity frame forces 2180×1220; PDF 1.6, all boxes, outlined labels, hidden artwork layer for RIP
 - [Pulse lookup for UV mix](pulse-lookup-for-uv-mix.md) — barcode joins, status vocab, 403 files, DB access works on this Mac
-- [Windows test package](windows-test-package.md) — Setup.bat/Start UV Mix.bat; team ZIP built only by Rahul; app-update.zip for fixes; always encoding="utf-8" (Windows cp1252)
+- [Windows test package](windows-test-package.md) — Setup.bat/Start UV Mix.bat; team ZIP built only by Rahul; Manual-Batching-UPDATE.zip for fixes (run Setup.bat when requirements change); restart start-mac.sh after code changes; always encoding="utf-8" (Windows cp1252)
 - [Rahul profile](rahul-profile.md) — MT3 print ops, non-developer, verifies visually in Photoshop/Illustrator
 - [Pulse design system](pulse-design-system.md) — UI uses Pulse CSS verbatim (pulse-shell.css) + "Manual Batching" dropdown so it ports into Pulse; Segoe UI/Tahoma font
-- [Sublimation rules](sublimation-rules.md) — 6UP/6UP-EXT templates, Bold/Classic split by case type, mirrored+centred, names avoid reg marks, RGB/CMYK via SWOP, branch `sublimation`
+- [Sublimation rules](sublimation-rules.md) — 6UP/6UP-EXT templates, Bold/Classic split by case type, mirrored+centred, names avoid reg marks, RGB/CMYK via SWOP, labels, per-sheet MB batch numbers, branch `sublimation`
 - [UV Inventory is separate](uv-inventory-separate.md) — inventory lives in ~/Dev/UV Inventory Model; this repo is UV + Sublimation batching only

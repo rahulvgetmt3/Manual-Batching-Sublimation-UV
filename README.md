@@ -116,6 +116,15 @@ python3 tools/make_team_zip.py --login DesignTeam --process sub \
 ```
 The ZIPs land in the git-ignored `dist/` folder. Share them with the team only, never on GitHub.
 
+**Updating the team PCs** (no credentials, safe to share): commit first, then
+```bash
+git archive --format=zip -o dist/Manual-Batching-UPDATE.zip HEAD \
+    app requirements.txt Setup.bat "Start Manual Batching.bat" windows README-WINDOWS.md .env.example
+```
+and add an "UPDATE - READ ME.txt" with what's new. The team copies it over their folder (keeping `.env` and `data`), runs **Setup.bat** once (needed whenever `requirements.txt` changes), then starts with "Start Manual Batching.bat" and presses Ctrl + F5.
+
+**On Rahul's Mac**, restart the portal with `./start-mac.sh` after any code change; the running portal doesn't reload by itself.
+
 ## Deploy (cloud)
 1. Create a small Linux server, such as an AWS Lightsail or EC2 t3.small, in the same AWS region as the Pulse DB.
 2. Allow that server's security group or IP to reach the DB on port 3306.
