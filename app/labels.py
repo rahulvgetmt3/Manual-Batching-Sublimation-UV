@@ -15,6 +15,7 @@ ship_to_name, component/item barcodes, quantity). The design is 1132 x 566 px, s
 the QR as vector modules, so it prints sharp on a label printer with no fonts needed.
 """
 
+from itertools import groupby
 from pathlib import Path
 
 import barcode
@@ -58,17 +59,8 @@ def _width(text, size_px, weight):
 
 def _text(text, x_px, baseline_px, size_px, weight, gray=0.0):
     """Filled outlines; positions in template px from the top-left, converted to PDF pt."""
-    glyphs, cmap, upm = _font(weight)
-    scale = size_px * K / upm
-    x, ops = x_px * K, []
-    y = PAGE_H - baseline_px * K
-    for ch in text:
-        g = cmap.get(ord(ch), ".notdef")
-        pen = _PdfPathPen(scale, x, y, glyphs)
-        glyphs[g].draw(pen)
-        ops += pen.ops
-        x += glyphs[g].width * scale
-    return f"{gray:.3f} g " + " ".join(ops) + " f" if ops else ""
+    body = text_outline(text, x_px * K, PAGE_H - baseline_px * K, size_px * K, weight)
+    return f"{gray:.3f} g " + body if body else ""
 
 
 def text_outline(text, x, baseline, size, weight="black", align="left"):
@@ -135,16 +127,20 @@ def _header(ops, head, tag, head_px, tag_px, head_share):
 
 def _description(ops, text, y):
     """Line 2: upper case, 54px 900, line-height 1.1, wraps to 2 lines; then the 3px divider."""
-    inner_r, width = DESIGN_W - PAD_R, DESIGN_W - PAD_R - PAD_L
+    width = DESIGN_W - PAD_R - PAD_L
     lines = _wrap(text.upper(), 54, "black", width)
     size = min(_fit(ln, 54, "black", width) for ln in lines) if lines else 54
     for ln in lines:
         ops.append(_text(ln, PAD_L, y + size * 0.92, size, "black"))
         y += size * 1.1
-    y += 6
+    return _divider(ops, y + 6) + 6
+
+
+def _divider(ops, y):
+    """The 3px full-width rule under the description / route header. Returns the y below it."""
     ops.append(f"0 G {3 * K:.3f} w {PAD_L * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} m "
-               f"{inner_r * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} l S")
-    return y + 3 + 6
+               f"{(DESIGN_W - PAD_R) * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} l S")
+    return y + 3
 
 
 def _qty_and_qr(ops, qty_top, qty_text, y, qr_data, caption, caption_px):
@@ -204,15 +200,11 @@ def _code128(data, x_px, y_top_px, w_px, h_px):
     cell = w_px * K / len(modules)
     x0, y0, h = x_px * K, PAGE_H - (y_top_px + h_px) * K, h_px * K
     bars, i = [], 0
-    while i < len(modules):
-        if modules[i] == "1":
-            j = i
-            while j < len(modules) and modules[j] == "1":
-                j += 1
-            bars.append(f"{x0 + i * cell:.3f} {y0:.3f} {(j - i) * cell:.3f} {h:.3f} re")
-            i = j
-        else:
-            i += 1
+    for bit, run in groupby(modules):
+        n = len(list(run))
+        if bit == "1":
+            bars.append(f"{x0 + i * cell:.3f} {y0:.3f} {n * cell:.3f} {h:.3f} re")
+        i += n
     return "0 g " + " ".join(bars) + " f"
 
 
@@ -237,10 +229,7 @@ def batch_label_ops(b):
     ops.append(_text(b["batch"], PAD_L, PAD_T + 42 + s * 0.95, s, "black"))
     y = PAD_T + 42 + s * 1.15 + 34
     ops.append(_text("PRODUCTION ROUTE", PAD_L, y, 30, "black", gray=grey))
-    y += 14
-    ops.append(f"0 G {3 * K:.3f} w {PAD_L * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} m "
-               f"{inner_r * K:.3f} {PAGE_H - (y + 1.5) * K:.3f} l S")
-    y += 3 + 58
+    y = _divider(ops, y + 14) + 58
     ops.append(_text(b["route"], PAD_L, y, 52, "black"))
     ops.append(_text(b["date"], inner_r - _width(b["date"], 40, "bold"), y, 40, "bold", gray=0x22 / 255))
     y += 84

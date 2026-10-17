@@ -53,6 +53,12 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-17 (later): /simplify review + custom-artwork fix
+- 4 review agents found a **real bug**: adding the Sheets option also passed `by_model` to `create_custom_run` (a find-and-replace matched both calls), so **every Sublimation custom-artwork batch failed** in the portal. It shipped in the 10-17 update ZIP and the fresh UV package. Fixed; tested this time through the portal API (login → upload → /api/runs), not only by calling Python directly.
+- Cleanups: batch counter now uses an OS file lock (safe across worker processes and on Windows), so the Dockerfile is back to 2 workers; one glyph loop in labels (`_text` wraps `text_outline`), shared `_divider`, groupby for barcode bars; custom-run Excel uses the same sheet groups as the PDFs; dead JS line removed. Two runs at once on 2 workers got separate MB numbers.
+- Skipped: moving colour-bar positions (`BATCH_AT`) into template detection, and a shared short template title for Python/JS. Both are bigger changes for little gain now.
+- Rebuilt `dist/Manual-Batching-UPDATE.zip` and `dist/Manual-Batching-UV-TEAM.zip` (uvteam / uvteam123) with the fix.
+
 ### 2026-10-17 (later): UV team fresh package; ready to go live
 - The UV team got "wrong username or password". The logins in the package were correct, so the PC's `.env` didn't match; cause not confirmed. Built a **fresh full package** `dist/Manual-Batching-UV-TEAM.zip` with login **uvteam / uvteam123** (`make_team_zip.py --password`, new option) and tested the login against the package's own `.env`. Logins file updated: `LOGINS - PRIVATE.txt` in the project folder (git-ignored) + `dist/LOGINS-private.txt`.
 - Rahul is going to put the portal on a server. Before that: Dockerfile now keeps uploaded templates in `/data` (`TEMPLATES_DIR`), runs **one worker** (the batch counter is only safe within one process), and trusts Caddy's forwarded headers; added `.dockerignore`. README › **Going live on a server** rewritten step by step (8 GB RAM, read-only DB user, `.env`, Docker, counter starting at MB10001, Caddy HTTPS, updating, backups). **The Docker build hasn't been tested** (no Docker on the Mac).

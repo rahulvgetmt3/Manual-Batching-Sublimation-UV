@@ -224,7 +224,7 @@ def new_run(req: RunReq, request: Request):
     try:
         if _process(req.process) == "sub" and req.custom:
             return create_custom_run(req.custom, req.template, req.color, user=user, mirror=req.mirror, fit=req.fit,
-                                     per_sheet=req.per_sheet, by_model=req.by_model)
+                                     per_sheet=req.per_sheet)
         if _process(req.process) == "sub":
             return create_sub_run([str(b) for b in req.barcodes], req.template, req.color, user=user, mirror=req.mirror,
                                   per_sheet=req.per_sheet, by_model=req.by_model)

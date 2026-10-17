@@ -13,7 +13,5 @@ USER uvmix
 VOLUME /data
 EXPOSE 8000
 
-# One worker process (requests still run in parallel threads): the sheet batch-number counter
-# (runs._new_batch_numbers) is only safe within one process.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--proxy-headers", \
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers", \
      "--forwarded-allow-ips", "*"]

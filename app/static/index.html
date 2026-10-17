@@ -481,7 +481,6 @@ function groups() {
 }
 function optsFor(g) {
   if (!subOpts[g]) subOpts[g] = { template: TPL_DEFAULT, color: 'CMYK', mirror: true, fit: false, per: 0, byModel: true };   // defaults: Extended, CMYK, flipped, actual size, one model per sheet
-  if (subOpts[g].byModel === undefined) subOpts[g].byModel = true;
   return subOpts[g];
 }
 function subControls(g) {
@@ -611,11 +610,13 @@ $('batches').addEventListener('input', e => {
   if (n) { const it = items.find(x => x.component_barcode === n.dataset.cname); if (it) { it.name = n.value; it.label = n.value; save(); } }
   if (c) { const it = items.find(x => x.component_barcode === c.dataset.ccopies); if (it) { it.copies = Math.max(1, Math.min(500, parseInt(c.value) || 1)); save(); } }
 });
+const BOOL_OPTS = ['fit', 'byModel'];   // <select> options stored as true/false
 $('batches').addEventListener('change', e => {
   if (e.target.closest('[data-ccopies]')) { render(); return; }
   const el = e.target.closest('[data-opt]'); if (!el) return;
   const o = optsFor(el.dataset.g);
-  o[el.dataset.opt] = el.type === 'checkbox' ? el.checked : (el.dataset.opt === 'fit' || el.dataset.opt === 'byModel') ? el.value === '1' : el.dataset.opt === 'per' ? parseInt(el.value) || 0 : el.value;
+  const opt = el.dataset.opt;
+  o[opt] = el.type === 'checkbox' ? el.checked : BOOL_OPTS.includes(opt) ? el.value === '1' : opt === 'per' ? parseInt(el.value) || 0 : el.value;
   render();
 });
 
@@ -631,7 +632,7 @@ $('batches').addEventListener('click', async e => {
     const g = gen.dataset.gen;
     gen.disabled = true; gen.textContent = 'Building PDFs…';
     const body = { barcodes: items.filter(it => groupOf(it) === g).map(it => it.component_barcode), process: proc };
-    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g), by_model: g !== 'CUSTOM' && !!o.byModel }); }
+    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g), by_model: o.byModel }); }
     if (g === 'CUSTOM') {
       body.barcodes = [];
       body.custom = items.filter(it => it.custom).map(it => ({ fetch_url: it.fetch_url, name: (it.name || '').trim() || 'Custom artwork', copies: Number(it.copies) || 1 }));

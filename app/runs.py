@@ -5,7 +5,6 @@ import json
 import os
 import re
 import shutil
-import threading
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -28,21 +27,33 @@ def _safe(s):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
 
 
-_BATCH_LOCK = threading.Lock()
+def _lock_file(f):
+    """Exclusive OS lock on an open file, held until it is closed; works across threads, worker
+    processes and on Windows."""
+    if os.name == "nt":
+        import msvcrt
+        f.seek(0)
+        msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(f, fcntl.LOCK_EX)
 
 
 def _new_batch_numbers(n):
     """Reserve n sheet batch numbers MB00001, MB00002, … (one per Sublimation sheet). The last one used
     is kept in RUNS_DIR/batch_counter.txt, so numbers never repeat. 'MB' (Manual Batching) keeps
     them apart from SiteFlow's all-digit batch IDs."""
-    path = RUNS_DIR / "batch_counter.txt"
-    with _BATCH_LOCK:
-        RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(RUNS_DIR / "batch_counter.txt", "a+", encoding="utf-8") as f:
+        _lock_file(f)
+        f.seek(0)
         try:
-            last = int(path.read_text(encoding="utf-8").strip() or 0)
-        except (FileNotFoundError, ValueError):
+            last = int(f.read().strip() or 0)
+        except ValueError:
             last = 0
-        path.write_text(str(last + n), encoding="utf-8")
+        f.seek(0)
+        f.truncate()
+        f.write(str(last + n))
     return [f"MB{last + i:05d}" for i in range(1, n + 1)]
 
 
@@ -307,16 +318,17 @@ def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", 
                "fit": bool(fit), "copy_no": n, "copies": copies} for it, path, n, copies in _custom_pieces(custom)]
 
     run_id, out = _new_run(f"CUSTOM_{template}_{color}", prefix="SUB")
+    sheets = _sheet_groups(len(pieces), per_sheet)
     # basic 2x1" labels from the table: text, sheet position, copy n / copies
     sheet_pdfs, label_pdfs, warnings, batches = _sub_sheets(
-        out, run_id, tpl, color, pieces, _sheet_groups(len(pieces), per_sheet), mirror,
+        out, run_id, tpl, color, pieces, sheets, mirror,
         lambda idx, s: ([{"run_id": run_id, "pos": f"S{s}-{n}", "name": pieces[i]["name"],
                           "copy_no": pieces[i]["copy_no"], "copies": pieces[i]["copies"]} for n, i in enumerate(idx, 1)],
                         custom_label_ops), "Custom")
     xlsx = out / f"{run_id}_manifest.xlsx"
-    write_custom_manifest([[i // per_sheet + 1, i % per_sheet + 1, pc["name"], round(pc["w_pt"] / MM, 1),
-                            round(pc["h_pt"] / MM, 1), "yes" if fit else "", pc["path"].name]
-                           for i, pc in enumerate(pieces)], xlsx, run_id)
+    write_custom_manifest([[s, pos, pieces[i]["name"], round(pieces[i]["w_pt"] / MM, 1),
+                            round(pieces[i]["h_pt"] / MM, 1), "yes" if fit else "", pieces[i]["path"].name]
+                           for s, idx in enumerate(sheets, 1) for pos, i in enumerate(idx, 1)], xlsx, run_id)
     for p in {pc["path"] for pc in pieces}:
         shutil.copyfile(p, out / "files" / p.name)
     return _finish(out, {"process": "sub", "custom": True, **opts, "family": "CUSTOM", "mirror": bool(mirror),
