@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
-    CACHE_DIR=/data/cache RUNS_DIR=/data/runs
+    CACHE_DIR=/data/cache RUNS_DIR=/data/runs TEMPLATES_DIR=/data/templates/sublimation
 
 WORKDIR /srv
 COPY requirements.txt .
@@ -13,4 +13,7 @@ USER uvmix
 VOLUME /data
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers"]
+# One worker process (requests still run in parallel threads): the sheet batch-number counter
+# (runs._new_batch_numbers) is only safe within one process.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--proxy-headers", \
+     "--forwarded-allow-ips", "*"]

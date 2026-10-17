@@ -126,20 +126,75 @@ and add an "UPDATE - READ ME.txt" with what's new. The team copies it over their
 
 **On Rahul's Mac**, restart the portal with `./start-mac.sh` after any code change; the running portal doesn't reload by itself.
 
-## Deploy (cloud)
-1. Create a small Linux server, such as an AWS Lightsail or EC2 t3.small, in the same AWS region as the Pulse DB.
-2. Allow that server's security group or IP to reach the DB on port 3306.
-3. Create a **read-only** MySQL user for the portal.
-4. Install Docker, copy this folder over, then run:
-   ```bash
-   docker build -t uvmix .
-   docker run -d --name uvmix --restart unless-stopped --env-file .env \
-     -v /srv/uvmix-data:/data -p 127.0.0.1:8000:8000 uvmix
-   ```
-5. Put HTTPS in front of it. With Caddy, `uvmix.getmt3.com { reverse_proxy 127.0.0.1:8000 }` is enough.
-6. Point a DNS record (for example `uvmix.getmt3.com`) at the server.
+## Going live on a server
+One server runs the portal for everyone: UV Mix and Sublimation, the History, and one shared batch-number counter. The teams then just open a web address; no more Windows packages.
 
-Runs and downloaded files are stored in `/data`. Back it up, or prune old runs from time to time.
+**Which code:** deploy the **`sublimation`** branch, which has both processes, or merge it into `main` first and deploy `main`.
+
+### 1. Server
+- **Linux**: Ubuntu 24.04 on AWS EC2 or Lightsail, in the **same AWS region as the Pulse DB**.
+- **Size**: at least **8 GB RAM** (e.g. t3.large), because a full-bed UV Spot PDF holds about 1.5 GB in memory while it's built. **2 vCPU** is enough.
+- **Disk**: **50 GB or more**. A full-bed run is a few hundred MB.
+- **Firewall / security group**: allow **22** (SSH, your IP only), **80** and **443** (web).
+
+### 2. Database access
+- Allow the server's **IP / security group** to reach the Pulse DB on **3306**.
+- Create a **read-only** MySQL user for the portal (SELECT on `mt3narada`). Don't reuse your own login.
+
+### 3. Settings file
+On the server, create `/srv/manual-batching/.env` (never commit it):
+```ini
+DB_HOST=pulse.getmt3.com
+DB_PORT=3306
+DB_NAME=mt3narada
+DB_USER=<read-only user>
+DB_PASSWORD=<its password>
+PORTAL_USERS=Rahul:<pw>,uvteam:<pw>,DesignTeam:<pw>
+SECRET_KEY=<long random string: python3 -c "import secrets;print(secrets.token_urlsafe(48))">
+COOKIE_SECURE=1
+DEFAULT_PROCESS=uv
+```
+`COOKIE_SECURE=1` is required once the site is on HTTPS. Give each team its own login; they're case-insensitive.
+
+### 4. Run it with Docker
+```bash
+sudo apt update && sudo apt install -y docker.io git
+git clone -b sublimation https://github.com/rahulvgetmt3/Manual-Batching-Sublimation-UV.git /srv/manual-batching
+cd /srv/manual-batching            # put the .env from step 3 here
+sudo docker build -t manual-batching .
+sudo mkdir -p /srv/manual-batching-data && sudo chown 1000 /srv/manual-batching-data
+sudo docker run -d --name manual-batching --restart unless-stopped --env-file .env \
+  -v /srv/manual-batching-data:/data -p 127.0.0.1:8000:8000 manual-batching
+curl -s localhost:8000/healthz      # {"ok":true}
+```
+The repo is **private**, so `git clone` asks for your GitHub username and a **personal access token** (GitHub › Settings › Developer settings › Fine-grained tokens, read-only access to this repo) as the password. A deploy key also works.
+
+Everything that must survive updates lives in `/srv/manual-batching-data`: runs (History), downloaded print files, uploaded Sublimation templates and the batch-number counter.
+
+**Batch numbers:** the test PCs each counted from MB00001, so start the live counter above them before the first batch, e.g. `echo 10000 | sudo tee /srv/manual-batching-data/runs/batch_counter.txt` (after creating that `runs` folder, owned by user 1000). The first live sheet is then MB10001.
+
+### 5. HTTPS and the web address
+- Point a DNS record, e.g. **`batching.getmt3.com`**, at the server's IP.
+- Install **Caddy** (`sudo apt install -y caddy`), set `/etc/caddy/Caddyfile` to:
+  ```
+  batching.getmt3.com {
+      reverse_proxy 127.0.0.1:8000
+  }
+  ```
+  Then run `sudo systemctl reload caddy`. Caddy gets and renews the HTTPS certificate by itself.
+
+### 6. Updating the live portal
+```bash
+cd /srv/manual-batching && git pull
+sudo docker build -t manual-batching . && sudo docker rm -f manual-batching
+sudo docker run -d --name manual-batching --restart unless-stopped --env-file .env \
+  -v /srv/manual-batching-data:/data -p 127.0.0.1:8000:8000 manual-batching
+```
+The History, templates and counter are kept, because they live in the data folder. Logs: `sudo docker logs -f manual-batching`.
+
+### 7. After it's live
+- Back up `/srv/manual-batching-data`, or at least `runs/` (e.g. an EBS snapshot), and prune old runs now and then.
+- Tell the teams the new address and logins. The Windows test PCs can then be retired.
 
 ## Files
 | Path | Purpose |
