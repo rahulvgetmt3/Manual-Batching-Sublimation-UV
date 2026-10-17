@@ -29,4 +29,4 @@ metadata:
 
 Related: [[rahul-profile]], [[pulse-lookup-for-uv-mix]].
 
-**Going live (2026-10-17):** Rahul is moving the portal to a server himself, following README › "Going live on a server" (Docker + Caddy, `/srv/manual-batching-data` volume, one uvicorn worker because the MB batch counter is per process, live counter to start at MB10001 so it doesn't clash with the test PCs). The UV team's test password is now `uvteam123` (fresh package `dist/Manual-Batching-UV-TEAM.zip`); logins are kept in the git-ignored `LOGINS - PRIVATE.txt`. Docker build not tested locally.
+**Going live (2026-10-17):** Rahul is moving the portal to a server himself, following README › "Going live on a server" (Docker + Caddy, `/srv/manual-batching-data` volume, 2 uvicorn workers (the MB batch counter uses an OS file lock, fcntl/msvcrt, so it is safe across processes), live counter to start at MB10001 so it doesn't clash with the test PCs). The UV team's test password is now `uvteam123` (fresh package `dist/Manual-Batching-UV-TEAM.zip`); logins are kept in the git-ignored `LOGINS - PRIVATE.txt`. Docker build not tested locally.
