@@ -6,5 +6,5 @@
 - [Windows test package](windows-test-package.md) — Setup.bat/Start UV Mix.bat; team ZIP built only by Rahul; Manual-Batching-UPDATE.zip for fixes (run Setup.bat when requirements change); restart start-mac.sh after code changes; always encoding="utf-8" (Windows cp1252)
 - [Rahul profile](rahul-profile.md) — MT3 print ops, non-developer, verifies visually in Photoshop/Illustrator
 - [Pulse design system](pulse-design-system.md) — UI uses Pulse CSS verbatim (pulse-shell.css) + "Manual Batching" dropdown so it ports into Pulse; Segoe UI/Tahoma font
-- [Sublimation rules](sublimation-rules.md) — 6UP/6UP-EXT templates, Bold/Classic split by case type, mirrored+centred, names avoid reg marks, RGB/CMYK via SWOP, labels, per-sheet MB batch numbers, branch `sublimation`
+- [Sublimation rules](sublimation-rules.md) — 6UP/6UP-EXT templates, Bold/Classic split by case type, mirrored+centred, names avoid reg marks, RGB/CMYK via SWOP, labels, per-sheet MB batch numbers, model-wise sheets; merged to `main` 2026-10-17
 - [UV Inventory is separate](uv-inventory-separate.md) — inventory lives in ~/Dev/UV Inventory Model; this repo is UV + Sublimation batching only

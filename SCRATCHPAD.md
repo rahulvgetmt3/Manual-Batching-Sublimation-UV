@@ -31,7 +31,7 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 **Sublimation (branch `sublimation`)**
 - [ ] Rahul or the team check the sheet PDFs in Illustrator and on the printer: mirroring, centring, names and RGB/CMYK.
 - [x] Confirmed 2026-10-12: Reconcile model = Pulse model name; any readable font for names; names may cross registration marks.
-- [ ] Merge into `main` and ship the update ZIP to the teams.
+- [x] Merged into `main` (2026-10-17, `98af6dc`); update ZIP shipped to the teams.
 - [ ] **Scan-test the Code 128 barcode** on the BATCH ID label (not scanned yet).
 - [ ] **Batch number counter is per PC** until hosting: two team PCs can both print MB00001. Decide if that's OK or change the format (e.g. date-based).
 - [ ] Optional: add the sheet batch number as a column in the Excel.
@@ -52,6 +52,9 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 
 ## Log
+
+### 2026-10-17 (end): sublimation merged into main
+- Merged `sublimation` into `main` (`98af6dc`); note conflicts resolved with the sublimation copies, and main's files now match sublimation exactly. **Work on `main` from now on.** README's branch and deploy notes updated.
 
 ### 2026-10-17 (later): /code-review fixes + developer handover
 - Batch counter: atomic replace (temp file + fsync + os.replace) under a separate lock file; a damaged or empty counter now **stops the run** instead of restarting at MB00001; Windows lock retries without blocking and unlocks explicitly. Stress test: 4 processes × 100 numbers, no repeats.

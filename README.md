@@ -14,8 +14,7 @@ Both processes accept barcodes the same way, and both have a **Custom artwork** 
 
 **Developers** integrating this into Pulse: start with [DEVELOPERS.md](DEVELOPERS.md).
 
-> **Branches:** `sublimation` has the full portal (UV Mix + Sublimation) and is the branch to use.
-> `main` holds the UV Mix version and the notes, until Sublimation is approved and merged.
+> **Branch:** `main` has the full portal (UV Mix + Sublimation). `sublimation` was merged into it on 2026-10-17 and is no longer needed.
 
 ## Adding items (both processes)
 Add component barcodes (or item barcodes, which resolve to their component) by:
@@ -131,7 +130,7 @@ and add an "UPDATE - READ ME.txt" with what's new. The team copies it over their
 ## Going live on a server
 One server runs the portal for everyone: UV Mix and Sublimation, the History, and one shared batch-number counter. The teams then just open a web address; no more Windows packages.
 
-**Which code:** deploy the **`sublimation`** branch, which has both processes, or merge it into `main` first and deploy `main`.
+**Which code:** deploy **`main`**.
 
 ### 1. Server
 - **Linux**: Ubuntu 24.04 on AWS EC2 or Lightsail, in the **same AWS region as the Pulse DB**.
@@ -161,7 +160,7 @@ DEFAULT_PROCESS=uv
 ### 4. Run it with Docker
 ```bash
 sudo apt update && sudo apt install -y docker.io git
-git clone -b sublimation https://github.com/rahulvgetmt3/Manual-Batching-Sublimation-UV.git /srv/manual-batching
+git clone https://github.com/rahulvgetmt3/Manual-Batching-Sublimation-UV.git /srv/manual-batching
 cd /srv/manual-batching            # put the .env from step 3 here
 sudo docker build -t manual-batching .
 sudo mkdir -p /srv/manual-batching-data && sudo chown 1000 /srv/manual-batching-data

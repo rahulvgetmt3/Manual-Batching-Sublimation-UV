@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-**Rahul's Sublimation requirements (2026-10-12):** built on git branch **`sublimation`**. `main` stays UV-only until the UV team gets a merged update.
+**Rahul's Sublimation requirements (2026-10-12):** built on branch `sublimation`, **merged into `main` on 2026-10-17**; work on `main` now.
 
 1. **Input:** the same as UV (scan, paste, CSV/XLSX upload).
 2. **Two templates; the default is 6UP Extended + CMYK export** for every batch (Rahul, 2026-10-12). Batches are grouped by family only, not by template. Both are 318 mm wide with 6 slots, each slot 131.1 mm wide:
