@@ -480,7 +480,8 @@ function groups() {
   return all.filter(g => present.includes(g) || runResults[proc][g]);
 }
 function optsFor(g) {
-  if (!subOpts[g]) subOpts[g] = { template: TPL_DEFAULT, color: 'CMYK', mirror: true, fit: false, per: 0 };   // defaults: Extended, CMYK, flipped, actual size
+  if (!subOpts[g]) subOpts[g] = { template: TPL_DEFAULT, color: 'CMYK', mirror: true, fit: false, per: 0, byModel: true };   // defaults: Extended, CMYK, flipped, actual size, one model per sheet
+  if (subOpts[g].byModel === undefined) subOpts[g].byModel = true;
   return subOpts[g];
 }
 function subControls(g) {
@@ -495,6 +496,11 @@ function subControls(g) {
         <option value="0" ${usePer(g) === perSheet(o.template) ? 'selected' : ''}>All ${perSheet(o.template)} (full sheet)</option>
         ${Array.from({ length: perSheet(o.template) - 1 }, (_, i) => i + 1).map(n => `<option value="${n}" ${usePer(g) === n && n < perSheet(o.template) ? 'selected' : ''}>${n} per sheet</option>`).join('')}
       </select></label>
+    ${g === 'CUSTOM' ? '' : `<label>Sheets
+      <select class="pulse-input" data-opt="byModel" data-g="${esc(g)}">
+        <option value="1" ${o.byModel ? 'selected' : ''}>Model-wise (one model per sheet)</option>
+        <option value="" ${o.byModel ? '' : 'selected'}>Mix models on a sheet</option>
+      </select></label>`}
     <label>Export
       <select class="pulse-input" data-opt="color" data-g="${esc(g)}">
         <option value="CMYK" ${o.color === 'CMYK' ? 'selected' : ''}>CMYK PDF</option>
@@ -529,6 +535,14 @@ function customTable(list) {
         <td><button class="x" title="Remove" data-rm="${esc(it.component_barcode)}">×</button></td>
       </tr>`; }).join('')}</tbody></table></div>`;
 }
+// Sublimation sheets: mixed = pieces / per sheet; model-wise = each model rounded up to whole sheets
+function subSheetCount(g, list, pieceCount) {
+  const per = usePer(g);
+  if (g === 'CUSTOM' || !optsFor(g).byModel) return Math.ceil(pieceCount / per);
+  const byModel = {};
+  list.forEach(it => { byModel[it.model] = (byModel[it.model] || 0) + 1; });
+  return Object.values(byModel).reduce((n, c) => n + Math.ceil(c / per), 0);
+}
 function render() {
   const html = groups().map(g => {
     const list = items.filter(it => groupOf(it) === g);
@@ -537,7 +551,7 @@ function render() {
     const attn = list.filter(needsAttention).length;
     const id = gid(g);
     const pieceCount = g === 'CUSTOM' ? list.reduce((n, it) => n + (Number(it.copies) || 1), 0) : list.length;
-    const sheets = proc === 'sub' ? Math.ceil(pieceCount / usePer(g)) : sheetCounts[g];
+    const sheets = proc === 'sub' ? subSheetCount(g, list, pieceCount) : sheetCounts[g];
     return `<section class="card ${groupClass(g)}" id="batch-${id}">
       <div class="batch-h">
         ${proc === 'uv' ? lineBadge(g) : famBadge(g) + ' ' + lineBadge(optsFor(g).template)}
@@ -601,7 +615,7 @@ $('batches').addEventListener('change', e => {
   if (e.target.closest('[data-ccopies]')) { render(); return; }
   const el = e.target.closest('[data-opt]'); if (!el) return;
   const o = optsFor(el.dataset.g);
-  o[el.dataset.opt] = el.type === 'checkbox' ? el.checked : el.dataset.opt === 'fit' ? el.value === '1' : el.dataset.opt === 'per' ? parseInt(el.value) || 0 : el.value;
+  o[el.dataset.opt] = el.type === 'checkbox' ? el.checked : (el.dataset.opt === 'fit' || el.dataset.opt === 'byModel') ? el.value === '1' : el.dataset.opt === 'per' ? parseInt(el.value) || 0 : el.value;
   render();
 });
 
@@ -617,7 +631,7 @@ $('batches').addEventListener('click', async e => {
     const g = gen.dataset.gen;
     gen.disabled = true; gen.textContent = 'Building PDFs…';
     const body = { barcodes: items.filter(it => groupOf(it) === g).map(it => it.component_barcode), process: proc };
-    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g) }); }
+    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g), by_model: g !== 'CUSTOM' && !!o.byModel }); }
     if (g === 'CUSTOM') {
       body.barcodes = [];
       body.custom = items.filter(it => it.custom).map(it => ({ fetch_url: it.fetch_url, name: (it.name || '').trim() || 'Custom artwork', copies: Number(it.copies) || 1 }));
@@ -627,7 +641,7 @@ $('batches').addEventListener('click', async e => {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
       const extra = d.process === 'sub'
-        ? ` · ${TPL_NAME[d.template]}${d.slots && d.per_sheet < d.slots ? ` · ${d.per_sheet} per sheet` : ''} · ${d.color} · ${d.mirror ? 'mirrored' : 'not mirrored'}${d.custom ? (d.fit ? ' · fit to slot' : ' · actual size') : ''}${d.converted ? ` · ${d.converted} file(s) converted to ${d.color}` : ''}`
+        ? ` · ${TPL_NAME[d.template]}${d.slots && d.per_sheet < d.slots ? ` · ${d.per_sheet} per sheet` : ''} ${d.custom ? '' : d.by_model ? ' · model-wise' : ' · models mixed'} · ${d.color} · ${d.mirror ? 'mirrored' : 'not mirrored'}${d.custom ? (d.fit ? ' · fit to slot' : ' · actual size') : ''}${d.converted ? ` · ${d.converted} file(s) converted to ${d.color}` : ''}`
           + (d.warnings && d.warnings.length ? `<br><span style="color:var(--warning)">⚠ ${d.warnings.map(esc).join('<br>⚠ ')}</span>` : '')
         : '';
       runResults[proc][g] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${d.batches ? ` · batch ${d.batches.map((b, i) => `S${i + 1} = <b>${esc(b)}</b>`).join(', ')}` : ''}${extra}${dlButtons(d)}`;

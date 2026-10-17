@@ -215,6 +215,7 @@ class RunReq(BaseModel):
     custom: list = []      # UV or Sublimation: uploaded artwork [{fetch_url, name, copies}] instead of barcodes
     fit: bool = False      # sublimation custom: scale artwork to fit the slot
     per_sheet: int = 0     # sublimation: artworks per sheet PDF (0 = every slot; fewer for fewer jigs)
+    by_model: bool = False  # sublimation orders: one model per sheet (else models mixed on a sheet)
 
 
 @app.post("/api/runs")
@@ -223,10 +224,10 @@ def new_run(req: RunReq, request: Request):
     try:
         if _process(req.process) == "sub" and req.custom:
             return create_custom_run(req.custom, req.template, req.color, user=user, mirror=req.mirror, fit=req.fit,
-                                     per_sheet=req.per_sheet)
+                                     per_sheet=req.per_sheet, by_model=req.by_model)
         if _process(req.process) == "sub":
             return create_sub_run([str(b) for b in req.barcodes], req.template, req.color, user=user, mirror=req.mirror,
-                                  per_sheet=req.per_sheet)
+                                  per_sheet=req.per_sheet, by_model=req.by_model)
         if req.custom:
             return create_uv_custom_run(req.custom, user=user)
         return create_run([str(b) for b in req.barcodes], user=user)

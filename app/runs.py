@@ -218,34 +218,48 @@ def _sub_options(template, color, per_sheet):
     return tpl, template, color, per_sheet, meta
 
 
-def _sub_sheets(out, run_id, tpl, color, pieces, per_sheet, mirror, labels, route):
-    """One sheet PDF + one label PDF per `per_sheet` pieces. labels(chunk, s, start) -> (entries, ops_fn).
-    Each sheet gets its own batch number, printed in red on the sheet and on the first page of its
-    label PDF (route: Bold / Classic / Essential / Custom). -> (sheet_pdfs, label_pdfs, warnings, batches)."""
+def _sheet_groups(n, per_sheet, keys=None):
+    """Piece indexes per sheet. keys=None: in order, `per_sheet` to a sheet (models mixed).
+    keys (one per piece, e.g. the model): each key on its own sheets, in order of first appearance,
+    so a sheet never mixes models; the last sheet of a model may be part-filled."""
+    if keys is None:
+        return [list(range(i, min(i + per_sheet, n))) for i in range(0, n, per_sheet)]
+    by_key = {}
+    for i, k in enumerate(keys):
+        by_key.setdefault(k, []).append(i)
+    return [idx[i:i + per_sheet] for idx in by_key.values() for i in range(0, len(idx), per_sheet)]
+
+
+def _sub_sheets(out, run_id, tpl, color, pieces, sheets, mirror, labels, route):
+    """One sheet PDF + one label PDF per entry of `sheets` (lists of piece indexes, from _sheet_groups).
+    labels(idx, s) -> (entries, ops_fn). Each sheet gets its own batch number, printed in red on the
+    sheet and on the first page of its label PDF (route: Bold / Classic / Essential / Custom).
+    -> (sheet_pdfs, label_pdfs, warnings, batches)."""
     art = ArtCache(color)   # each artwork converted once for the whole batch
     sheet_pdfs, label_pdfs, warnings = [], [], []
-    starts = range(0, len(pieces), per_sheet)
-    batches = _new_batch_numbers(len(starts))
+    batches = _new_batch_numbers(len(sheets))
     date = dt.datetime.now().strftime("%a %d %m %Y - %H:%M")
-    for s, start in enumerate(starts, 1):
-        chunk, batch = pieces[start:start + per_sheet], batches[s - 1]
+    for s, idx in enumerate(sheets, 1):
+        chunk, batch = [pieces[i] for i in idx], batches[s - 1]
         pdf_path = out / f"{run_id}_S{s}.pdf"
         warnings += [f"sheet {s} {w}" for w in
                      build_sheet(tpl, color, chunk, pdf_path, pdf_path.stem, mirror, art, batch=batch)]
         lbl_path = out / f"{run_id}_S{s}_LABELS.pdf"
-        entries, ops_fn = labels(chunk, s, start)
+        entries, ops_fn = labels(idx, s)
         build_labels(entries, lbl_path, lbl_path.stem, ops_fn, batch={
             "batch": batch, "route": route, "date": date, "qty": len(chunk),
-            "product": f"{route} {tpl['title'].replace('Sublimation ', '')}", "sheet": s, "sheets": len(starts),
+            "product": f"{route} {tpl['title'].replace('Sublimation ', '')}", "sheet": s, "sheets": len(sheets),
             "attributes": [color, "Mirrored" if mirror else "Not mirrored"], "file": pdf_path.name})
         sheet_pdfs.append(pdf_path)
         label_pdfs.append(lbl_path)
     return sheet_pdfs, label_pdfs, warnings, batches
 
 
-def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, per_sheet=0):
+def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, per_sheet=0,
+                   by_model=False):
     """Sublimation: one PDF per sheet in the chosen template, artwork mirrored and centred,
-    names beside each piece, artwork exported as RGB or CMYK."""
+    names beside each piece, artwork exported as RGB or CMYK. by_model: each sheet holds one
+    model only (Rahul, 2026-10-17: operators load one model per sheet); else models are mixed."""
     tpl, template, color, per_sheet, opts = _sub_options(template, color, per_sheet)
     barcodes = normalise(barcodes)
     if not barcodes:
@@ -259,26 +273,27 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
         raise ValueError("Bold, Classic and Essential print on separate sheets; generate them as separate batches")
     family = families.pop()
 
-    pieces, placements = [], []
-    for i, (it, path) in enumerate(zip(items, _download_all(items))):
+    pieces = []
+    for it, path in zip(items, _download_all(items)):
         info = image_info(path)
         pieces.append({"path": path, "w_pt": info["w_pt"], "h_pt": info["h_pt"], "name": it.label,
                        "src_mode": info["mode"]})
-        placements.append(Placement(index=i, sheet=i // per_sheet + 1, position=i % per_sheet + 1,
-                                    x=0, y=0, w=info["w_pt"], h=info["h_pt"]))
+    sheets = _sheet_groups(len(items), per_sheet, [it.model for it in items] if by_model else None)
+    placements = [Placement(index=i, sheet=s, position=pos, x=0, y=0, w=pieces[i]["w_pt"], h=pieces[i]["h_pt"])
+                  for s, idx in enumerate(sheets, 1) for pos, i in enumerate(idx, 1)]
 
     run_id, out = _new_run(f"{family}_{template}_{color}", prefix="SUB")
     # item labels: one 2x1" label per piece, in slot order (as HP SiteFlow prints them)
     sheet_pdfs, label_pdfs, warnings, batches = _sub_sheets(
-        out, run_id, tpl, color, pieces, per_sheet, mirror,
-        lambda chunk, s, start: (items[start:start + len(chunk)], label_ops), family.title())
+        out, run_id, tpl, color, pieces, sheets, mirror,
+        lambda idx, s: ([items[i] for i in idx], label_ops), family.title())
     xlsx = out / f"{run_id}_manifest.xlsx"
     write_manifest(placements, items, xlsx, run_id)
     for p in placements:
         it, src = items[p.index], pieces[p.index]["path"]
         name = f"S{p.sheet}-{p.position}_{it.batch_number}_{_safe(it.print_code)}_{it.component_barcode}{src.suffix}"
         shutil.copyfile(src, out / "files" / name)
-    return _finish(out, {"process": "sub", **opts, "family": family, "mirror": bool(mirror), "user": user,
+    return _finish(out, {"process": "sub", **opts, "family": family, "mirror": bool(mirror), "by_model": bool(by_model), "user": user,
                          "pieces": len(items), "sheets": len(sheet_pdfs), "batches": batches,
                          "converted": sum(1 for pc in pieces if pc["src_mode"] != color),
                          "warnings": warnings, "barcodes": barcodes}, [*sheet_pdfs, *label_pdfs, xlsx])
@@ -294,10 +309,10 @@ def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", 
     run_id, out = _new_run(f"CUSTOM_{template}_{color}", prefix="SUB")
     # basic 2x1" labels from the table: text, sheet position, copy n / copies
     sheet_pdfs, label_pdfs, warnings, batches = _sub_sheets(
-        out, run_id, tpl, color, pieces, per_sheet, mirror,
-        lambda chunk, s, start: ([{"run_id": run_id, "pos": f"S{s}-{i + 1}", "name": pc["name"],
-                                   "copy_no": pc["copy_no"], "copies": pc["copies"]} for i, pc in enumerate(chunk)],
-                                 custom_label_ops), "Custom")
+        out, run_id, tpl, color, pieces, _sheet_groups(len(pieces), per_sheet), mirror,
+        lambda idx, s: ([{"run_id": run_id, "pos": f"S{s}-{n}", "name": pieces[i]["name"],
+                          "copy_no": pieces[i]["copy_no"], "copies": pieces[i]["copies"]} for n, i in enumerate(idx, 1)],
+                        custom_label_ops), "Custom")
     xlsx = out / f"{run_id}_manifest.xlsx"
     write_custom_manifest([[i // per_sheet + 1, i % per_sheet + 1, pc["name"], round(pc["w_pt"] / MM, 1),
                             round(pc["h_pt"] / MM, 1), "yes" if fit else "", pc["path"].name]
