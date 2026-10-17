@@ -8,3 +8,4 @@ Reference/
 LUX_*/
 chat/*.jsonl
 dist/
+LOGINS*.txt
