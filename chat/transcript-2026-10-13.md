@@ -1347,3 +1347,325 @@ The push was blocked again, even though you asked for it. I won't try to get aro
 
 - 🔧 **Bash** — Refresh this chat's transcript locally
   `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; NEW=~/.claude/projects/-Users-rahulverma-Dev-Mix-Batch-UV-and-Sublimation/a46c2f98-2d34-4065-b451-de3c6`
+
+  <details><summary>output</summary>
+
+```
+M chat/README.md
+ M chat/transcript.md
+?? chat/transcript-2026-10-13.md
+```
+</details>
+
+## 🤖 Claude · 2026-10-16 13:35
+
+The chat transcripts aren't on GitHub yet. The safety check blocked the push both times, even after you said yes, and I'm not going to get around it. Everything is ready on your Mac:
+- `chat/transcript.md` is the old chat, now complete.
+- `chat/transcript-2026-10-13.md` is this chat, up to now.
+- `chat/README.md` lists both chats and how to refresh them.
+
+To push them, paste this into the VS Code terminal:
+
+```bash
+cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation" && git add chat && git commit -m "Notes: chat transcripts" && git push origin sublimation
+```
+
+The raw session files stay out automatically, because git ignores them.
+
+If you'd rather I push chat files myself in future, you can add a permission rule for it in your Claude Code settings, and I can set that up. Otherwise, run the command above each time you want the transcripts on GitHub.
+
+## 🧑 Rahul · 2026-10-16 13:35
+
+done
+
+## 🤖 Claude · 2026-10-16 13:35
+
+- 🔧 **Bash** — Confirm transcripts reached GitHub
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; git fetch -q origin; git status -sb | head -3; git log --oneline -2 origin/sublimation`
+
+  <details><summary>output</summary>
+
+```
+## sublimation...origin/sublimation
+e26cbfa Notes: chat transcripts
+1531e74 Notes: memory, scratchpad and README (sheet batch numbers, team update ZIP, old chat recovered)
+```
+</details>
+
+## 🤖 Claude · 2026-10-16 13:35
+
+I checked GitHub: your commit `e26cbfa` with the chat transcripts is on the `sublimation` branch, and your Mac has nothing left unsaved or unpushed. Memory, the scratchpad, the README and the chat are all up to date on GitHub.
+
+Still open:
+- Send `dist/Manual-Batching-UPDATE.zip` to both teams.
+- Scan-test the barcode on the BATCH ID label.
+- Decide about the per-PC batch number counter.
+
+## 🧑 Rahul · 2026-10-17 07:08
+
+one more thing, operator needs same model to be in single sheet, give option to choose whether batching needs model wise or mix models in single sheet
+
+## 🤖 Claude · 2026-10-17 07:08
+
+I'll look at how Sublimation options flow from the screen to the batch builder.
+
+## 🤖 Claude · 2026-10-17 07:08
+
+- 🔧 **Bash** — Read run request, Item fields and per-sheet UI wiring
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; git status -sb | head -2; grep -n 'per_sheet\|class RunReq' -A0 app/main.py; sed -n '/class RunReq/,/^$`
+
+  <details><summary>output</summary>
+
+```
+## sublimation...origin/sublimation
+200:        return {"sheets": 0, "per_sheet": []}
+206:    return {"sheets": sheets, "per_sheet": [sum(1 for p in pl if p.sheet == s) for s in range(1, sheets + 1)]}
+209:class RunReq(BaseModel):
+217:    per_sheet: int = 0     # sublimation: artworks per sheet PDF (0 = every slot; fewer for fewer jigs)
+226:                                     per_sheet=req.per_she …
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:08
+
+Got it, Sublimation only. Reading the batch options panel and the sheet preview:
+
+## 🤖 Claude · 2026-10-17 07:08
+
+- 🔧 **Bash** — Read Item model fields, layout API and UI options
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; sed -n 25,40p app/pulse.py; sed -n 190,208p app/main.py; sed -n 285,310p app/static/index.html; sed -n `
+
+  <details><summary>output</summary>
+
+```
+WHERE i.component_barcode IN ({ph}) OR i.item_barcode IN ({ph})
+"""
+
+
+class LookupError_(Exception):
+    """A scan that must be rejected; message is shown to the operator."""
+
+
+@dataclass
+class Item:
+    component_barcode: str = ""
+    item_barcode: str = ""
+    fetch_url: str = ""
+    sku: str = ""
+    model: str = ""
+    case_type: str = ""
+
+
+class LayoutReq(BaseModel):
+    pieces: list  # [{lab …
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:09
+
+- 🔧 **Bash** — Refactor sheet grouping and show run builders
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; python3 - <<'E'`
+
+  <details><summary>output</summary>
+
+```
+def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, per_sheet=0):
+    """Sublimation: one PDF per sheet in the chosen template, artwork mirrored and centred,
+    names beside each piece, artwork exported as RGB or CMYK."""
+    tpl, template, color, per_sheet, opts = _sub_options(template, color, per_sheet)
+    barcodes = normalise(barcodes)
+    if not barcod …
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:09
+
+- 🔧 **Bash** — Add model-wise grouping to Sublimation runs and API
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; python3 - <<'E'`
+
+  <details><summary>output</summary>
+
+```
+app/main.py     |  5 +++--
+ app/manifest.py |  2 +-
+ app/runs.py     | 61 +++++++++++++++++++++++++++++++++++----------------------
+ 3 files changed, 42 insertions(+), 26 deletions(-)
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:09
+
+Now the screen: the new option, the sheet count and the result line.
+
+## 🤖 Claude · 2026-10-17 07:09
+
+- 🔧 **Bash** — Add Sheets option to the Sublimation batch controls
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; python3 - <<'E'`
+
+  <details><summary>output</summary>
+
+```
+616:  const el = e.target.closest('[data-opt]'); if (!el) return;
+618:  o[el.dataset.opt] = el.type === 'checkbox' ? el.checked : el.dataset.opt === 'fit' ? el.value === '1' : el.dataset.opt === 'per' ? parseInt(el.value) || 0 : el.value;
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:09
+
+- 🔧 **Bash** — Store the Sheets choice as true/false
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; sed -i '' "618s/el.dataset.opt === 'fit' ? el.value === '1'/(el.dataset.opt === 'fit' || el.dataset.opt`
+
+  <details><summary>output</summary>
+
+```
+$('batches').addEventListener('change', e => {
+  if (e.target.closest('[data-ccopies]')) { render(); return; }
+  const el = e.target.closest('[data-opt]'); if (!el) return;
+  const o = optsFor(el.dataset.g);
+  o[el.dataset.opt] = el.type === 'checkbox' ? el.checked : (el.dataset.opt === 'fit' || el.dataset.opt === 'byModel') ? el.value === '1' : el.dataset.opt === 'per' ? parseInt(el.value) || 0 : …
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:09
+
+Now a test with real Pulse barcodes, both ways (in the test folder):
+
+## 🤖 Claude · 2026-10-17 07:09
+
+- 🔧 **Bash** — Test model-wise vs mixed Sublimation runs with real barcodes
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV-and-Sublimation/a46c2f98-2d34-4065-b451-de`
+
+  <details><summary>output</summary>
+
+```
+8
+models: Counter({'iPhone 18 Pro': 2, 'iPhone 17 Pro': 2, 'iPhone 17': 2, 'iPhone 16 Pro': 1, 'Galaxy S26': 1})
+by_model 5 sheets ['MB00008', 'MB00009', 'MB00010', 'MB00011', 'MB00012']
+  S 1 Counter({'iPhone 18 Pro': 2})
+  S 2 Counter({'iPhone 16 Pro': 1})
+  S 3 Counter({'iPhone 17 Pro': 2})
+  S 4 Counter({'iPhone 17': 2})
+  S 5 Counter({'Galaxy S26': 1})
+mixed 2 sheets ['MB00013', 'MB00014']
+   …
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:09
+
+Model-wise works: 8 items made 5 sheets, one model each. Mixed gives 2 full sheets, as before. Checking the labels and custom artwork still line up:
+
+## 🤖 Claude · 2026-10-17 07:10
+
+- 🔧 **Bash** — Verify labels per sheet and custom-run regression
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV-and-Sublimation/a46c2f98-2d34-4065-b451-de`
+
+  <details><summary>output</summary>
+
+```
+SUB_BOLD_6UP-EXT_CMYK_20261017_01
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "<string>", line 4, in <listcomp>
+IndexError: list index out of range
+S1-1_418983_B-237NN-MS_B433CEB6F1.jpg
+S1-2_418964_B-JP7NN-MS_B433CEB708.jpg
+S2-1_418974_B-467FF-MS_B433CEB636.jpg
+S3-1_418942_B-432KK-MS_B433CE5F6A.jpg
+S3-2_418942_B-290KK-MS_B433CE3C83.jpg
+S4-1_419026_B-430JJ-MS_B4 …
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:10
+
+- 🔧 **Bash** — Count label pages per sheet; re-test custom run
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV-and-Sublimation/a46c2f98-2d34-4065-b451-de`
+
+  <details><summary>output</summary>
+
+```
+[('S1', 3), ('S2', 2), ('S3', 3), ('S4', 3), ('S5', 2)]
+2 ['MB00015', 'MB00016']
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:10
+
+The labels match each sheet (batch page plus that sheet's items), and custom artwork still works. Restarting your Mac portal and pushing:
+
+## 🤖 Claude · 2026-10-17 07:10
+
+- 🔧 **Bash** — Document, restart portal, commit and push
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; python3 - <<'E'`
+
+  <details><summary>output</summary>
+
+```
+{"ok":true}
+726582a Sublimation: Sheets option - model-wise (one model per sheet, default) or mix models
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:10
+
+Each Sublimation batch now has a **Sheets** option, next to Template and Artworks per sheet:
+
+- **Model-wise (one model per sheet):** each sheet holds only one model. If a model doesn't fill a sheet, that sheet goes out part-filled and the next model starts on a new sheet.
+- **Mix models on a sheet:** every sheet is filled in scan order, as before.
+
+**I set Model-wise as the default** because that's what the operators need, but it uses more sheets. If you'd rather keep Mix as the default, say so and I'll switch it.
+
+**Test with 8 real Bold items across 5 models:**
+
+| Mode | Sheets | What's on each sheet |
+|---|---|---|
+| Model-wise | 5 | one model each, e.g. S1 = 2 × iPhone 18 Pro, S2 = 1 × iPhone 16 Pro |
+| Mixed | 2 | 6 + 2 pieces, models mixed |
+
+Each sheet keeps its own batch number and labels PDF. The labels follow the model-wise sheets, and the Excel now lists pieces sheet by sheet. The sheet count on the screen updates when you switch the option.
+
+Custom artwork doesn't have a model in Pulse, so it doesn't show this option and still fills sheets in order.
+
+I've restarted your Mac portal and pushed the change to `sublimation`. Press **Cmd + Shift + R** in the portal to try it. When you're happy with it, I'll rebuild the team update ZIP.
+
+## 🧑 Rahul · 2026-10-17 07:12
+
+give me zip for team
+
+## 🤖 Claude · 2026-10-17 07:12
+
+- 🔧 **Bash** — Rebuild team update ZIP from latest commit
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; git status --short; git log --oneline -1; S=/private/tmp/claude-501/-Users-rahulverma-Dev-Mix-Batch-UV-`
+
+  <details><summary>output</summary>
+
+```
+726582a Sublimation: Sheets option - model-wise (one model per sheet, default) or mix models
+  1882960                     42 files
+0
+4
+python-barcode==0.16.1
+```
+</details>
+
+## 🤖 Claude · 2026-10-17 07:12
+
+The team ZIP is ready: **`dist/Manual-Batching-UPDATE.zip`**, open in Finder. Send this one rather than yesterday's ZIP. It's built from the latest saved code, so it has both new features:
+- the **Sheets** option, with Model-wise as the default or Mix models;
+- the **red batch number** on each sheet and the **BATCH ID page** at the start of each labels PDF.
+
+It has no logins or passwords in it, so it's safe to send to both teams. The "UPDATE - READ ME.txt" inside explains what's new and how to install it:
+1. Close the black window.
+2. Copy everything from the ZIP into their portal folder and choose **Replace the files**.
+3. Double-click **Setup.bat** once. They must do this, or the portal won't start.
+4. Start with **Start Manual Batching.bat**, then press **Ctrl + F5** in the browser.
+
+## 🧑 Rahul · 2026-10-17 07:14
+
+update everything
+
+## 🤖 Claude · 2026-10-17 07:14
+
+- 🔧 **Bash** — Update memory and scratchpad, refresh transcript, push both branches
+  `cd "/Users/rahulverma/Dev/Mix Batch UV and Sublimation"; python3 - <<'E'`
