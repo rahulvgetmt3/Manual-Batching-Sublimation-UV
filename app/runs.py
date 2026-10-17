@@ -5,7 +5,9 @@ import json
 import os
 import re
 import shutil
+import time
 import zipfile
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -27,33 +29,56 @@ def _safe(s):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
 
 
-def _lock_file(f):
-    """Exclusive OS lock on an open file, held until it is closed; works across threads, worker
-    processes and on Windows."""
-    if os.name == "nt":
-        import msvcrt
-        f.seek(0)
-        msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
-    else:
-        import fcntl
-        fcntl.flock(f, fcntl.LOCK_EX)
+@contextmanager
+def _file_lock(path, timeout=60):
+    """Exclusive OS lock on a lock file, across threads and worker processes, on Linux, Mac and
+    Windows. Needs a local disk (flock is unreliable on NFS/SMB). Raises ValueError on timeout."""
+    with open(path, "a+") as f:
+        if os.name == "nt":
+            import msvcrt
+            f.seek(0)
+            deadline = time.monotonic() + timeout
+            while True:
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError:
+                    if time.monotonic() > deadline:
+                        raise ValueError("Another batch is being numbered; try again in a moment") from None
+                    time.sleep(0.05)
+            try:
+                yield
+            finally:
+                f.seek(0)
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f, fcntl.LOCK_EX)
+            yield   # released when the file closes
 
 
 def _new_batch_numbers(n):
     """Reserve n sheet batch numbers MB00001, MB00002, … (one per Sublimation sheet). The last one used
     is kept in RUNS_DIR/batch_counter.txt, so numbers never repeat. 'MB' (Manual Batching) keeps
-    them apart from SiteFlow's all-digit batch IDs."""
+    them apart from SiteFlow's all-digit batch IDs. The file is replaced atomically, and a damaged
+    file stops the run rather than restarting at MB00001."""
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
-    with open(RUNS_DIR / "batch_counter.txt", "a+", encoding="utf-8") as f:
-        _lock_file(f)
-        f.seek(0)
+    path = RUNS_DIR / "batch_counter.txt"
+    with _file_lock(RUNS_DIR / "batch_counter.lock"):
         try:
-            last = int(f.read().strip() or 0)
-        except ValueError:
-            last = 0
-        f.seek(0)
-        f.truncate()
-        f.write(str(last + n))
+            text = path.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            text = "0"
+        if not text.isdigit():
+            raise ValueError(f"The batch number counter ({path}) is damaged: set it to the last MB number "
+                             "printed (digits only) and try again")
+        last = int(text)
+        tmp = path.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(str(last + n))
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
     return [f"MB{last + i:05d}" for i in range(1, n + 1)]
 
 
@@ -267,7 +292,7 @@ def _sub_sheets(out, run_id, tpl, color, pieces, sheets, mirror, labels, route):
 
 
 def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, per_sheet=0,
-                   by_model=False):
+                   by_model=True):
     """Sublimation: one PDF per sheet in the chosen template, artwork mirrored and centred,
     names beside each piece, artwork exported as RGB or CMYK. by_model: each sheet holds one
     model only (Rahul, 2026-10-17: operators load one model per sheet); else models are mixed."""

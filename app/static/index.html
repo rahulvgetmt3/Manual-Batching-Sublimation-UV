@@ -632,7 +632,7 @@ $('batches').addEventListener('click', async e => {
     const g = gen.dataset.gen;
     gen.disabled = true; gen.textContent = 'Building PDFs…';
     const body = { barcodes: items.filter(it => groupOf(it) === g).map(it => it.component_barcode), process: proc };
-    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g), by_model: o.byModel }); }
+    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g), ...(g !== 'CUSTOM' && { by_model: o.byModel }) }); }
     if (g === 'CUSTOM') {
       body.barcodes = [];
       body.custom = items.filter(it => it.custom).map(it => ({ fetch_url: it.fetch_url, name: (it.name || '').trim() || 'Custom artwork', copies: Number(it.copies) || 1 }));

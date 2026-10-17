@@ -53,6 +53,13 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-17 (later): /code-review fixes + developer handover
+- Batch counter: atomic replace (temp file + fsync + os.replace) under a separate lock file; a damaged or empty counter now **stops the run** instead of restarting at MB00001; Windows lock retries without blocking and unlocks explicitly. Stress test: 4 processes × 100 numbers, no repeats.
+- API `by_model` defaults to True like the screen; custom batches don't send it; Pieces sheet keeps its sheet/position sort; Dockerfile back to **1 worker** (memory), raise to 2 only on 16 GB+.
+- Added `tests/test_smoke.py` (no DB). It catches the 10-17 custom-run bug.
+- Added **DEVELOPERS.md** for the Pulse devs (keep this as a Python "batching engine" API; Pulse supplies React pages + auth; tables read; API; state that could move into the Pulse DB). Rahul will give the devs GitHub access himself.
+- Rebuilt both team ZIPs.
+
 ### 2026-10-17 (later): /simplify review + custom-artwork fix
 - 4 review agents found a **real bug**: adding the Sheets option also passed `by_model` to `create_custom_run` (a find-and-replace matched both calls), so **every Sublimation custom-artwork batch failed** in the portal. It shipped in the 10-17 update ZIP and the fresh UV package. Fixed; tested this time through the portal API (login → upload → /api/runs), not only by calling Python directly.
 - Cleanups: batch counter now uses an OS file lock (safe across worker processes and on Windows), so the Dockerfile is back to 2 workers; one glyph loop in labels (`_text` wraps `text_outline`), shared `_divider`, groupby for barcode bars; custom-run Excel uses the same sheet groups as the PDFs; dead JS line removed. Two runs at once on 2 workers got separate MB numbers.

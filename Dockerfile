@@ -13,5 +13,7 @@ USER uvmix
 VOLUME /data
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers", \
+# One worker: big UV / Sublimation builds hold GBs of image data, and requests already run in
+# parallel threads. Raise to 2 only on a 16 GB+ server (the batch counter is safe across workers).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--proxy-headers", \
      "--forwarded-allow-ips", "*"]

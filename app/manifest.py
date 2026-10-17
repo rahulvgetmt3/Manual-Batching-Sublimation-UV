@@ -87,7 +87,7 @@ def write_manifest(placements, items, path, title):
     ws = wb.create_sheet("Pieces")
     ws.append([c[0] for c in COLUMNS])
     _dark_header(ws)
-    for p in placements:
+    for p in sorted(placements, key=lambda p: (p.sheet, p.position)):   # Pieces always read S1, S2, …
         ws.append([fn(items[p.index], p) for _, fn in COLUMNS])
     widths = [7, 9, 10, 14, 14, 26, 18, 14, 14, 22, 26, 20, 24, 12, 13, 12, 8, 22, 18, 10, 10, 60]
     for i, w in enumerate(widths, 1):

@@ -215,7 +215,7 @@ class RunReq(BaseModel):
     custom: list = []      # UV or Sublimation: uploaded artwork [{fetch_url, name, copies}] instead of barcodes
     fit: bool = False      # sublimation custom: scale artwork to fit the slot
     per_sheet: int = 0     # sublimation: artworks per sheet PDF (0 = every slot; fewer for fewer jigs)
-    by_model: bool = False  # sublimation orders: one model per sheet (else models mixed on a sheet)
+    by_model: bool = True   # sublimation orders: one model per sheet (default, as on screen); False mixes models
 
 
 @app.post("/api/runs")
