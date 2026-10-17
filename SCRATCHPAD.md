@@ -53,6 +53,10 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-10-17 (later): UV team fresh package; ready to go live
+- The UV team got "wrong username or password". The logins in the package were correct, so the PC's `.env` didn't match; cause not confirmed. Built a **fresh full package** `dist/Manual-Batching-UV-TEAM.zip` with login **uvteam / uvteam123** (`make_team_zip.py --password`, new option) and tested the login against the package's own `.env`. Logins file updated: `LOGINS - PRIVATE.txt` in the project folder (git-ignored) + `dist/LOGINS-private.txt`.
+- Rahul is going to put the portal on a server. Before that: Dockerfile now keeps uploaded templates in `/data` (`TEMPLATES_DIR`), runs **one worker** (the batch counter is only safe within one process), and trusts Caddy's forwarded headers; added `.dockerignore`. README › **Going live on a server** rewritten step by step (8 GB RAM, read-only DB user, `.env`, Docker, counter starting at MB10001, Caddy HTTPS, updating, backups). **The Docker build hasn't been tested** (no Docker on the Mac).
+
 ### 2026-10-17: Model-wise Sublimation sheets
 - Rahul: operators need one model per sheet; give a choice. Added a **Sheets** option per Sublimation order batch: **Model-wise** (default) or **Mix models** (`726582a`). Groups by Pulse model in first-seen order; the last sheet of a model may be part-filled. Custom artwork is unchanged. The Excel Pieces sheet is now sorted by sheet/position.
 - Tested with 8 real Bold items over 5 models: 5 sheets model-wise vs 2 mixed; label PDFs and batch numbers follow the sheets.
