@@ -56,7 +56,7 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 ### 2026-10-17: Model-wise Sublimation sheets
 - Rahul: operators need one model per sheet; give a choice. Added a **Sheets** option per Sublimation order batch: **Model-wise** (default) or **Mix models** (`726582a`). Groups by Pulse model in first-seen order; the last sheet of a model may be part-filled. Custom artwork is unchanged. The Excel Pieces sheet is now sorted by sheet/position.
 - Tested with 8 real Bold items over 5 models: 5 sheets model-wise vs 2 mixed; label PDFs and batch numbers follow the sheets.
-- Rebuilt `dist/Manual-Batching-UPDATE.zip` (includes the 10-16 batch numbers; Setup.bat required). Rahul is sending it to both teams.
+- Rebuilt `dist/Manual-Batching-UPDATE.zip` (includes the 10-16 batch numbers; Setup.bat required). **Rahul sent it to the teams and it worked** (2026-10-17).
 
 ### 2026-10-16: Sublimation sheet batch numbers
 - Rahul asked for a batch number top right of each Sublimation sheet, plus a page in the label PDF with the same number, so the operator knows which labels go with which sheet. He shared SiteFlow's current version (red batch ID beside the colour bar; BATCH ID label with barcode, route, date, QTY, product).
