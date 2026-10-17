@@ -5,16 +5,22 @@ import json
 import os
 import re
 import shutil
+import time
 import zipfile
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .fetch import cached_file, image_info
-from .layout import layout
-from .manifest import write_manifest
+from .custom import item_for
+from .fetch import cached_file, cached_path, image_info
+from .labels import build_labels, custom_label_ops, label_ops
+from .layout import MM, Placement, layout
+from .manifest import write_custom_manifest, write_manifest
 from .pdf_build import build_pdfs
+from .pulse import Item, lookup_many, normalise
 from .spot_pdf import build_spot_pdf
-from .pulse import lookup_many, normalise
+from .sub_build import ArtCache, build_sheet
+from .sub_templates import DEFAULT_TEMPLATE, registry
 
 RUNS_DIR = Path(os.environ.get("RUNS_DIR", Path(__file__).resolve().parent.parent / "data" / "runs"))
 
@@ -23,18 +29,151 @@ def _safe(s):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-")
 
 
-def _claim_run_dir(line):
-    """Create the next free UV_<line>_<date>_NN folder; mkdir is atomic, so parallel runs never collide."""
+@contextmanager
+def _file_lock(path, timeout=60):
+    """Exclusive OS lock on a lock file, across threads and worker processes, on Linux, Mac and
+    Windows. Needs a local disk (flock is unreliable on NFS/SMB). Raises ValueError on timeout."""
+    with open(path, "a+") as f:
+        if os.name == "nt":
+            import msvcrt
+            f.seek(0)
+            deadline = time.monotonic() + timeout
+            while True:
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError:
+                    if time.monotonic() > deadline:
+                        raise ValueError("Another batch is being numbered; try again in a moment") from None
+                    time.sleep(0.05)
+            try:
+                yield
+            finally:
+                f.seek(0)
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f, fcntl.LOCK_EX)
+            yield   # released when the file closes
+
+
+def _new_batch_numbers(n):
+    """Reserve n sheet batch numbers MB00001, MB00002, … (one per Sublimation sheet). The last one used
+    is kept in RUNS_DIR/batch_counter.txt, so numbers never repeat. 'MB' (Manual Batching) keeps
+    them apart from SiteFlow's all-digit batch IDs. The file is replaced atomically, and a damaged
+    file stops the run rather than restarting at MB00001."""
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    path = RUNS_DIR / "batch_counter.txt"
+    with _file_lock(RUNS_DIR / "batch_counter.lock"):
+        try:
+            text = path.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            text = "0"
+        if not text.isdigit():
+            raise ValueError(f"The batch number counter ({path}) is damaged: set it to the last MB number "
+                             "printed (digits only) and try again")
+        last = int(text)
+        tmp = path.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(str(last + n))
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    return [f"MB{last + i:05d}" for i in range(1, n + 1)]
+
+
+RUN_ID_RE = re.compile(r"(UV|SUB)_[A-Z0-9_-]+_\d{8}_\d+")   # a run folder name (no path separators)
+
+
+def _claim_run_dir(line, prefix="UV"):
+    """Create the next free <prefix>_<line>_<date>_NN folder; mkdir is atomic, so parallel runs never collide."""
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = dt.datetime.now().strftime("%Y%m%d")
-    n = 1 + sum(1 for p in RUNS_DIR.glob(f"UV_{line}_{stamp}_*") if p.is_dir())
+    n = 1 + sum(1 for p in RUNS_DIR.glob(f"{prefix}_{line}_{stamp}_*") if p.is_dir())
     while True:
-        run_id = f"UV_{line}_{stamp}_{n:02d}"
+        run_id = f"{prefix}_{line}_{stamp}_{n:02d}"
         try:
             (RUNS_DIR / run_id).mkdir()
             return run_id
         except FileExistsError:
             n += 1
+
+
+def _new_run(line, prefix="UV"):
+    """Claim the run folder and its files/ subfolder -> (run_id, out)."""
+    run_id = _claim_run_dir(line, prefix)
+    out = RUNS_DIR / run_id
+    (out / "files").mkdir()
+    return run_id, out
+
+
+# Already-compressed files go into ZIPs as they are (deflating them again only costs time).
+_STORED = {".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp", ".zip"}
+
+
+def _zip(path, entries):
+    """entries: [(file, name in zip)]."""
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        for f, name in entries:
+            z.write(f, name, compress_type=zipfile.ZIP_STORED if Path(f).suffix.lower() in _STORED
+                    else zipfile.ZIP_DEFLATED)
+
+
+def _finish(out, meta, outputs):
+    """Write run.json and the run ZIP (outputs + files/). Returns the full meta."""
+    meta = {"run_id": out.name, **meta, "created": dt.datetime.now().isoformat(timespec="seconds")}
+    (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    _zip(out / f"{out.name}.zip", [(f, f.name) for f in outputs]
+         + [(f, f"files/{f.name}") for f in sorted((out / "files").iterdir())])
+    return meta
+
+
+def _download_all(items):
+    def _get(it):
+        try:
+            return cached_file(it.fetch_url)
+        except Exception as e:  # noqa: BLE001 - reported per barcode
+            raise ValueError(f"{it.component_barcode}: could not download print file ({e})") from e
+
+    with ThreadPoolExecutor(8) as ex:
+        return list(ex.map(_get, items))
+
+
+def _custom_pieces(custom):
+    """Uploaded artworks [{fetch_url, name, copies}] -> [(item dict, path, copy_no, copies)], copies expanded."""
+    out = []
+    for c in custom or []:
+        key = str(c.get("fetch_url") or "")
+        if not key.startswith("custom://") or not cached_path(key).exists():
+            raise ValueError(f"Artwork {c.get('name') or key} is no longer on the server; upload it again")
+        it = item_for(key, str(c.get("name") or "Custom artwork")[:80])
+        copies = max(1, min(500, int(c.get("copies") or 1)))
+        out += [(it, cached_path(key), n + 1, copies) for n in range(copies)]
+    if not out:
+        raise ValueError("No custom artwork added")
+    return out
+
+
+def _artworks(custom):
+    return [{"name": c.get("name"), "copies": c.get("copies", 1), "file": c.get("fetch_url")} for c in custom]
+
+
+# ---- UV bed (LUX / Mirror / custom): File, Die, Spot PDFs + Excel ----
+
+def _uv_outputs(out, run_id, items, pieces):
+    """Lay out and write File, Die, Spot (per sheet) PDFs and the manifest -> (placements, outputs)."""
+    placements = layout(pieces)
+    file_pdf, die_pdf = out / f"{run_id}_FILE.pdf", out / f"{run_id}_DIE.pdf"
+    xlsx = out / f"{run_id}_manifest.xlsx"
+    build_pdfs(placements, pieces, file_pdf, die_pdf, run_id)
+    sheets = max(p.sheet for p in placements)
+    spot_pdfs = []
+    for s in range(1, sheets + 1):
+        sp = out / (f"{run_id}_SPOT.pdf" if sheets == 1 else f"{run_id}_SPOT_S{s}.pdf")
+        build_spot_pdf([p for p in placements if p.sheet == s], pieces, items, sp, sp.stem)
+        spot_pdfs.append(sp)
+    write_manifest(placements, items, xlsx, run_id)
+    return placements, [file_pdf, die_pdf, *spot_pdfs, xlsx]
 
 
 def create_run(barcodes, user=""):
@@ -49,61 +188,178 @@ def create_run(barcodes, user=""):
     if len(lines) > 1:
         raise ValueError("LUX and Mirror print with different methods and cannot share a PDF; generate them separately")
     line = lines.pop()
-
-    def _get(it):
-        try:
-            return cached_file(it.fetch_url)
-        except Exception as e:  # noqa: BLE001 - reported per barcode
-            raise ValueError(f"{it.component_barcode}: could not download print file ({e})") from e
-
-    with ThreadPoolExecutor(8) as ex:
-        paths = list(ex.map(_get, items))
     pieces = []
-    for it, path in zip(items, paths):
+    for it, path in zip(items, _download_all(items)):
         info = image_info(path)
         pieces.append({"label": it.label, "w": info["w_pt"], "h": info["h_pt"], "path": path, "info": info})
 
-    placements = layout(pieces)
-
-    run_id = _claim_run_dir(line)
-    out = RUNS_DIR / run_id
-    (out / "files").mkdir()
-    file_pdf = out / f"{run_id}_FILE.pdf"
-    die_pdf = out / f"{run_id}_DIE.pdf"
-    xlsx = out / f"{run_id}_manifest.xlsx"
-    build_pdfs(placements, pieces, file_pdf, die_pdf, run_id)
-    sheets_n = max(p.sheet for p in placements)
-    spot_pdfs = []
-    for s in range(1, sheets_n + 1):
-        sp = out / (f"{run_id}_SPOT.pdf" if sheets_n == 1 else f"{run_id}_SPOT_S{s}.pdf")
-        build_spot_pdf([p for p in placements if p.sheet == s], pieces, items, sp, sp.stem)
-        spot_pdfs.append(sp)
-    write_manifest(placements, items, xlsx, run_id)
-
+    run_id, out = _new_run(line)
+    placements, outputs = _uv_outputs(out, run_id, items, pieces)
     for p in placements:
         it, src = items[p.index], pieces[p.index]["path"]
         name = f"S{p.sheet}-{p.position:03d}_{it.batch_number}_{_safe(it.print_code)}_{it.component_barcode}{src.suffix}"
         shutil.copyfile(src, out / "files" / name)
+    return _finish(out, {"process": "uv", "line": line, "user": user, "pieces": len(items),
+                         "sheets": max(p.sheet for p in placements), "barcodes": barcodes}, outputs)
 
-    sheets = max(p.sheet for p in placements)
-    meta = {
-        "run_id": run_id,
-        "line": line,
-        "created": dt.datetime.now().isoformat(timespec="seconds"),
-        "user": user,
-        "pieces": len(items),
-        "sheets": sheets,
-        "barcodes": barcodes,
-    }
-    (out / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
-    zip_path = out / f"{run_id}.zip"
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in (file_pdf, die_pdf, *spot_pdfs, xlsx):
-            z.write(f, f.name)
-        for f in sorted((out / "files").iterdir()):
-            z.write(f, f"files/{f.name}")
-    return meta
+def create_uv_custom_run(custom, user=""):
+    """UV bed from artwork uploaded by the team (no Pulse order): File, Die and Spot PDFs + Excel,
+    same right-aligned layout as LUX/Mirror. Die = each image's exact size; the die label is the
+    text typed in the table. Copies repeat an artwork."""
+    items, pieces, infos = [], [], {}
+    for it, path, n, _ in _custom_pieces(custom):
+        items.append(Item(label=it["name"], line="CUSTOM", reconcile_model=it["name"], batch_number="CUSTOM",
+                          component_barcode=f"{it['component_barcode']}-{n}", job_status="custom",
+                          fetch_url=it["fetch_url"]))
+        if path not in infos:
+            infos[path] = image_info(path)
+        pieces.append({"label": it["name"], "w": it["w_pt"], "h": it["h_pt"], "path": path, "info": infos[path]})
+
+    run_id, out = _new_run("CUSTOM")
+    placements, outputs = _uv_outputs(out, run_id, items, pieces)
+    for p in {pc["path"] for pc in pieces}:
+        shutil.copyfile(p, out / "files" / p.name)
+    return _finish(out, {"process": "uv", "custom": True, "line": "CUSTOM", "user": user, "pieces": len(pieces),
+                         "sheets": max(p.sheet for p in placements), "barcodes": [],
+                         "artworks": _artworks(custom)}, outputs)
+
+
+# ---- Sublimation sheets (one PDF per sheet in a template) + item labels + Excel ----
+
+def _per_sheet(templates, template, per):
+    """Artworks per sheet PDF: the template's slot count, or fewer (1..slots) when the team prints
+    on fewer nesting jigs. The first slots in fill order are used (TL, TR, ML, ...)."""
+    slots = len(templates[template]["slots"])
+    try:
+        per = int(per or 0)
+    except (TypeError, ValueError):
+        per = 0
+    return slots if per <= 0 else min(per, slots)
+
+
+def _sub_options(template, color, per_sheet):
+    """Check the Sublimation options -> (template dict, template key, color, per_sheet, meta)."""
+    template = template or DEFAULT_TEMPLATE  # default: 6UP Extended (Rahul)
+    templates = registry()
+    if template not in templates:
+        raise ValueError(f"Unknown template {template!r}")
+    color = (color or "CMYK").upper()        # default: CMYK (Rahul)
+    if color not in ("RGB", "CMYK"):
+        raise ValueError("Colour must be RGB or CMYK")
+    tpl = templates[template]
+    per_sheet = _per_sheet(templates, template, per_sheet)
+    meta = {"line": template, "template": template, "template_title": tpl["title"], "per_sheet": per_sheet,
+            "slots": len(tpl["slots"]), "color": color}
+    return tpl, template, color, per_sheet, meta
+
+
+def _sheet_groups(n, per_sheet, keys=None):
+    """Piece indexes per sheet. keys=None: in order, `per_sheet` to a sheet (models mixed).
+    keys (one per piece, e.g. the model): each key on its own sheets, in order of first appearance,
+    so a sheet never mixes models; the last sheet of a model may be part-filled."""
+    if keys is None:
+        return [list(range(i, min(i + per_sheet, n))) for i in range(0, n, per_sheet)]
+    by_key = {}
+    for i, k in enumerate(keys):
+        by_key.setdefault(k, []).append(i)
+    return [idx[i:i + per_sheet] for idx in by_key.values() for i in range(0, len(idx), per_sheet)]
+
+
+def _sub_sheets(out, run_id, tpl, color, pieces, sheets, mirror, labels, route):
+    """One sheet PDF + one label PDF per entry of `sheets` (lists of piece indexes, from _sheet_groups).
+    labels(idx, s) -> (entries, ops_fn). Each sheet gets its own batch number, printed in red on the
+    sheet and on the first page of its label PDF (route: Bold / Classic / Essential / Custom).
+    -> (sheet_pdfs, label_pdfs, warnings, batches)."""
+    art = ArtCache(color)   # each artwork converted once for the whole batch
+    sheet_pdfs, label_pdfs, warnings = [], [], []
+    batches = _new_batch_numbers(len(sheets))
+    date = dt.datetime.now().strftime("%a %d %m %Y - %H:%M")
+    for s, idx in enumerate(sheets, 1):
+        chunk, batch = [pieces[i] for i in idx], batches[s - 1]
+        pdf_path = out / f"{run_id}_S{s}.pdf"
+        warnings += [f"sheet {s} {w}" for w in
+                     build_sheet(tpl, color, chunk, pdf_path, pdf_path.stem, mirror, art, batch=batch)]
+        lbl_path = out / f"{run_id}_S{s}_LABELS.pdf"
+        entries, ops_fn = labels(idx, s)
+        build_labels(entries, lbl_path, lbl_path.stem, ops_fn, batch={
+            "batch": batch, "route": route, "date": date, "qty": len(chunk),
+            "product": f"{route} {tpl['title'].replace('Sublimation ', '')}", "sheet": s, "sheets": len(sheets),
+            "attributes": [color, "Mirrored" if mirror else "Not mirrored"], "file": pdf_path.name})
+        sheet_pdfs.append(pdf_path)
+        label_pdfs.append(lbl_path)
+    return sheet_pdfs, label_pdfs, warnings, batches
+
+
+def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, per_sheet=0,
+                   by_model=True):
+    """Sublimation: one PDF per sheet in the chosen template, artwork mirrored and centred,
+    names beside each piece, artwork exported as RGB or CMYK. by_model: each sheet holds one
+    model only (Rahul, 2026-10-17: operators load one model per sheet); else models are mixed."""
+    tpl, template, color, per_sheet, opts = _sub_options(template, color, per_sheet)
+    barcodes = normalise(barcodes)
+    if not barcodes:
+        raise ValueError("No barcodes scanned")
+    found, errors = lookup_many(barcodes, process="sub")
+    if errors:
+        raise ValueError("; ".join(errors.values()))
+    items = [found[b] for b in barcodes]
+    families = {it.family for it in items}
+    if len(families) > 1:
+        raise ValueError("Bold, Classic and Essential print on separate sheets; generate them as separate batches")
+    family = families.pop()
+
+    pieces = []
+    for it, path in zip(items, _download_all(items)):
+        info = image_info(path)
+        pieces.append({"path": path, "w_pt": info["w_pt"], "h_pt": info["h_pt"], "name": it.label,
+                       "src_mode": info["mode"]})
+    sheets = _sheet_groups(len(items), per_sheet, [it.model for it in items] if by_model else None)
+    placements = [Placement(index=i, sheet=s, position=pos, x=0, y=0, w=pieces[i]["w_pt"], h=pieces[i]["h_pt"])
+                  for s, idx in enumerate(sheets, 1) for pos, i in enumerate(idx, 1)]
+
+    run_id, out = _new_run(f"{family}_{template}_{color}", prefix="SUB")
+    # item labels: one 2x1" label per piece, in slot order (as HP SiteFlow prints them)
+    sheet_pdfs, label_pdfs, warnings, batches = _sub_sheets(
+        out, run_id, tpl, color, pieces, sheets, mirror,
+        lambda idx, s: ([items[i] for i in idx], label_ops), family.title())
+    xlsx = out / f"{run_id}_manifest.xlsx"
+    write_manifest(placements, items, xlsx, run_id)
+    for p in placements:
+        it, src = items[p.index], pieces[p.index]["path"]
+        name = f"S{p.sheet}-{p.position}_{it.batch_number}_{_safe(it.print_code)}_{it.component_barcode}{src.suffix}"
+        shutil.copyfile(src, out / "files" / name)
+    return _finish(out, {"process": "sub", **opts, "family": family, "mirror": bool(mirror), "by_model": bool(by_model), "user": user,
+                         "pieces": len(items), "sheets": len(sheet_pdfs), "batches": batches,
+                         "converted": sum(1 for pc in pieces if pc["src_mode"] != color),
+                         "warnings": warnings, "barcodes": barcodes}, [*sheet_pdfs, *label_pdfs, xlsx])
+
+
+def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, fit=False, per_sheet=0):
+    """Sublimation sheets from artwork uploaded by the team (no Pulse order): same template,
+    flip and RGB/CMYK options; copies repeat an artwork; optional fit-to-slot; basic 2x1 labels."""
+    tpl, template, color, per_sheet, opts = _sub_options(template, color, per_sheet)
+    pieces = [{"path": path, "w_pt": it["w_pt"], "h_pt": it["h_pt"], "name": it["name"], "src_mode": it["mode"],
+               "fit": bool(fit), "copy_no": n, "copies": copies} for it, path, n, copies in _custom_pieces(custom)]
+
+    run_id, out = _new_run(f"CUSTOM_{template}_{color}", prefix="SUB")
+    sheets = _sheet_groups(len(pieces), per_sheet)
+    # basic 2x1" labels from the table: text, sheet position, copy n / copies
+    sheet_pdfs, label_pdfs, warnings, batches = _sub_sheets(
+        out, run_id, tpl, color, pieces, sheets, mirror,
+        lambda idx, s: ([{"run_id": run_id, "pos": f"S{s}-{n}", "name": pieces[i]["name"],
+                          "copy_no": pieces[i]["copy_no"], "copies": pieces[i]["copies"]} for n, i in enumerate(idx, 1)],
+                        custom_label_ops), "Custom")
+    xlsx = out / f"{run_id}_manifest.xlsx"
+    write_custom_manifest([[s, pos, pieces[i]["name"], round(pieces[i]["w_pt"] / MM, 1),
+                            round(pieces[i]["h_pt"] / MM, 1), "yes" if fit else "", pieces[i]["path"].name]
+                           for s, idx in enumerate(sheets, 1) for pos, i in enumerate(idx, 1)], xlsx, run_id)
+    for p in {pc["path"] for pc in pieces}:
+        shutil.copyfile(p, out / "files" / p.name)
+    return _finish(out, {"process": "sub", "custom": True, **opts, "family": "CUSTOM", "mirror": bool(mirror),
+                         "fit": bool(fit), "user": user, "pieces": len(pieces), "sheets": len(sheet_pdfs), "batches": batches,
+                         "converted": sum(1 for pc in pieces if pc["src_mode"] != color), "warnings": warnings,
+                         "artworks": _artworks(custom)}, [*sheet_pdfs, *label_pdfs, xlsx])
 
 
 def list_runs(limit=100):
@@ -118,25 +374,33 @@ def list_runs(limit=100):
 
 
 def run_file(run_id, kind):
-    if not re.fullmatch(r"UV_[A-Z]+_\d{8}_\d+", run_id):
+    if not RUN_ID_RE.fullmatch(run_id):
         return None
     out = RUNS_DIR / run_id
+    if run_id.startswith("SUB_") and kind == "file":
+        return _one_or_zip([p for p in out.glob(f"{run_id}_S*.pdf") if not p.stem.endswith("_LABELS")],
+                           out / f"{run_id}_SHEETS.zip")
+    if run_id.startswith("SUB_") and kind == "labels":
+        return _one_or_zip(out.glob(f"{run_id}_S*_LABELS.pdf"), out / f"{run_id}_LABELS.zip")
     if kind == "spot":
-        return _spot_download(out, run_id)
+        return _one_or_zip(out.glob(f"{run_id}_SPOT*.pdf"), out / f"{run_id}_SPOT.zip")
     name = {"zip": f"{run_id}.zip", "file": f"{run_id}_FILE.pdf",
             "die": f"{run_id}_DIE.pdf", "xlsx": f"{run_id}_manifest.xlsx"}.get(kind)
     p = out / name if name else None
     return p if p and p.exists() else None
 
 
-def _spot_download(out, run_id):
-    """The spot PDF; for a multi-sheet run, one ZIP holding every sheet's spot PDF."""
-    psds = sorted(out.glob(f"{run_id}_SPOT*.pdf"))
-    if len(psds) <= 1:
-        return psds[0] if psds else None
-    z = out / f"{run_id}_SPOT.zip"
-    if not z.exists():
-        with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
-            for f in psds:
-                zf.write(f, f.name)
-    return z
+def _sheet_no(p):
+    """'…_S12.pdf' / '…_S12_LABELS.pdf' / '…_SPOT_S3.pdf' -> 12 / 12 / 3 (natural sheet order)."""
+    m = re.search(r"_S(\d+)(?:_LABELS)?$", p.stem)
+    return int(m.group(1)) if m else 0
+
+
+def _one_or_zip(pdfs, zip_path):
+    """The single PDF, or (built once) a ZIP of all of them in sheet order."""
+    pdfs = sorted(pdfs, key=_sheet_no)
+    if len(pdfs) <= 1:
+        return pdfs[0] if pdfs else None
+    if not zip_path.exists():
+        _zip(zip_path, [(f, f.name) for f in pdfs])
+    return zip_path

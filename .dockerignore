@@ -1,0 +1,11 @@
+# Only requirements.txt and app/ go into the image; keep the build context small and secret-free
+.env
+.venv/
+data/
+dist/
+Reference/
+LUX_*/
+chat/
+docs/
+LOGINS*.txt
+.git/

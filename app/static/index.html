@@ -12,7 +12,20 @@
   * { box-sizing:border-box; }
   main { max-width:1400px; margin:0 auto; padding:20px 16px 60px; display:grid; gap:16px; grid-template-columns: minmax(0,1fr) 300px; }
   @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
-  .col { display:grid; gap:16px; align-content:start; min-width:0; }
+  .col { display:grid; gap:16px; align-content:start; min-width:0; grid-template-columns:minmax(0,1fr); }
+  .col > * { min-width:0; }   /* wide tables scroll inside their card instead of widening the column */
+  main > aside { align-self:start; }
+  .tpl-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+  .tpl-card { display:flex; gap:14px; align-items:flex-start; }
+  .tpl-card svg { flex:none; background:#fff; border:1px solid var(--gray-200); border-radius:6px; }
+  .tpl-card h3 { margin:0 0 4px; font-size:15px; }
+  .tpl-card .meta { line-height:1.6; }
+  .cthumb { height:96px !important; max-width:72px; object-fit:contain; background:var(--gray-50); }
+  .cname { width:100%; min-width:240px; height:34px; border:1px solid var(--gray-300); border-radius:6px; padding:0 10px; font:inherit; font-size:13px; }
+  .cname:focus, .ccopies:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px #667eea1a; }
+  .ccopies { width:70px; height:34px; border:1px solid var(--gray-300); border-radius:6px; padding:0 8px; font:inherit; }
+  .grp-CUSTOM { border-left:4px solid var(--secondary); }
+  .nordic-table td.wrap { white-space:normal; min-width:220px; max-width:360px; }   /* the right column must not stretch over the batch cards */
   .pane { display:none; } .pane.on { display:block; }
   .scan input { width:100%; font-size:20px; padding:12px 14px; border:2px solid var(--ink); border-radius:10px; letter-spacing:.04em; }
   textarea { width:100%; min-height:130px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font:13px ui-monospace, Menlo, Consolas, monospace; resize:vertical; }
@@ -89,8 +102,22 @@
   .nordic-table-container { margin-top:12px; }
   .nordic-table { margin-top:0; }
   tr.attn td { background:#fffbeb; }
-  #batch-LUX { border-left:4px solid var(--secondary); }
-  #batch-MIRROR { border-left:4px solid var(--info-light); border-left-color:var(--color-info); }
+  .grp-LUX { border-left:4px solid var(--secondary); }
+  .grp-MIRROR { border-left:4px solid var(--color-info); }
+  .grp-BOLD { border-left:4px solid var(--color-primary); }
+  .grp-CLASSIC { border-left:4px solid var(--success); }
+  .grp-ESSENTIAL { border-left:4px solid var(--cyan); }
+  .grp-OTHER { border-left:4px solid var(--warning); }
+  .subopts { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:12px; padding:10px 12px;
+             background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; }
+  .subopts label { font-size:12px; font-weight:600; color:var(--gray-600); display:flex; align-items:center; gap:6px; }
+  .subopts select { height:32px; }
+  .toggle { position:relative; width:38px; height:22px; flex:none; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .toggle span { position:absolute; inset:0; background:var(--gray-300); border-radius:999px; transition:.15s; cursor:pointer; }
+  .toggle span:before { content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .toggle input:checked + span { background:var(--color-primary); }
+  .toggle input:checked + span:before { transform:translateX(16px); }
   .last { cursor:default; }
   .last:hover { transform:none; box-shadow:none; }
   .last .cd-kpi-value { font-size:18px; margin-top:4px; white-space:normal; word-break:break-all; }
@@ -125,14 +152,16 @@
             <li class="top-nav__section">
               <div class="top-nav__section-label">UV Mix · LUX &amp; Mirror</div>
               <ul class="top-nav__section-items">
-                <li><a class="top-nav__dropdown-link top-nav__dropdown-link--active" data-view="build">Build batch</a></li>
-                <li><a class="top-nav__dropdown-link" data-view="history">History</a></li>
+                <li><a class="top-nav__dropdown-link top-nav__dropdown-link--active" data-proc="uv" data-view="build">Build batch</a></li>
+                <li><a class="top-nav__dropdown-link" data-proc="uv" data-view="history">History</a></li>
               </ul>
             </li>
             <li class="top-nav__section">
               <div class="top-nav__section-label">Sublimation</div>
               <ul class="top-nav__section-items">
-                <li><a class="top-nav__dropdown-link is-disabled">Coming soon</a></li>
+                <li><a class="top-nav__dropdown-link" data-proc="sub" data-view="build">Build batch</a></li>
+                <li><a class="top-nav__dropdown-link" data-proc="sub" data-view="history">History</a></li>
+                <li><a class="top-nav__dropdown-link" data-proc="sub" data-view="templates">Templates</a></li>
               </ul>
             </li>
           </ul>
@@ -171,6 +200,7 @@
         <button data-tab="scan" class="cd-pill-tab active">Scan</button>
         <button data-tab="paste" class="cd-pill-tab">Paste list</button>
         <button data-tab="upload" class="cd-pill-tab">Upload file</button>
+        <button data-tab="custom" class="cd-pill-tab" id="tabCustom">Custom artwork</button>
       </div>
       <div class="pane on" id="pane-scan">
         <div class="scan"><input id="scan" placeholder="Scan component barcode (B433…)" autocomplete="off" autofocus></div>
@@ -192,6 +222,18 @@
           <a href="/api/template.csv">⬇ CSV template</a>
         </div>
       </div>
+      <div class="pane" id="pane-custom">
+        <label class="drop" id="cdrop">
+          <input type="file" id="cfile" accept=".png,.jpg,.jpeg,.tif,.tiff,.webp" multiple hidden>
+          <span class="big">Drop artwork files here</span>
+          <span class="small">or click to choose · PNG, JPG, TIFF, WebP · several at once</span>
+        </label>
+        <div class="tpl" style="gap:8px">
+          <input id="curl" class="pulse-input" style="flex:1;min-width:260px;font-weight:400" placeholder="…or paste a direct image link (https://…, Dropbox links work)">
+          <button class="cd-btn cd-btn-primary" id="curlGo" type="button">Add from link</button>
+        </div>
+        <p class="hint" style="margin:10px 0 0" id="customHint"></p>
+      </div>
       <div id="msg"></div>
       <div class="report" id="report"></div>
     </section>
@@ -210,7 +252,7 @@
       <h2>Run history</h2>
       <span class="sp"></span>
       <select id="hFilter" class="pulse-input">
-        <option value="">All lines</option><option value="LUX">LUX</option><option value="MIRROR">Mirror</option>
+        <option value="">All</option>
       </select>
       <input id="hSearch" class="pulse-input" style="font-weight:400" placeholder="Search run ID or user">
     </div>
@@ -224,17 +266,65 @@
   </section>
 </main>
 
+<main class="view" id="view-templates" style="grid-template-columns:1fr">
+  <section class="card">
+    <div class="batch-h"><h2>Upload a template</h2></div>
+    <p class="meta" style="margin:6px 0 12px">Upload the team's dieline <b>without artwork</b> (PDF, or .ai saved with "Create PDF Compatible File").
+      Each piece needs one stroked rectangle (like the green frames). Slots, names and what to remove are detected automatically;
+      the frames and QR codes are not printed.</p>
+    <form id="tplForm" class="subopts" style="margin-top:0">
+      <label>Name <input class="pulse-input" name="name" placeholder="e.g. 10UP" required maxlength="24" style="width:120px"></label>
+      <label>Title <input class="pulse-input" name="title" placeholder="e.g. Sublimation 10UP" style="width:220px;font-weight:400"></label>
+      <label>File <input type="file" name="file" accept=".pdf,.ai" required></label>
+      <button class="cd-btn cd-btn-primary" type="submit" id="tplGo">Upload &amp; detect</button>
+    </form>
+    <div id="tplMsg" style="margin-top:10px;font-weight:600"></div>
+  </section>
+  <div id="tplList" class="tpl-grid"></div>
+</main>
+
 <script>
 const $ = id => document.getElementById(id);
-const KEY = 'uvmix.items.v2';
-const LINES = ['LUX', 'MIRROR'];
-const LINE_NAME = { LUX: 'LUX', MIRROR: 'Mirror' };
-let items = [];
-try { items = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { items = []; }
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {} };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const runResults = {};  // line -> last result html
+
+// ---- two processes on one page: UV mix (LUX & Mirror) and Sublimation (6UP) ----
+const PROC = {
+  uv: { key: 'uvmix.items.v2', name: 'UV Mix', unit: 'bed sheet(s)',
+        hint: 'Nothing added yet. Scan, paste or upload LUX / Mirror component barcodes. Each line gets its own batch.' },
+  sub: { key: 'submix.items.v1', name: 'Sublimation', unit: 'sheet(s)',
+        hint: 'Nothing added yet. Scan, paste or upload 6UP (Bold / Classic / Essential) component barcodes. Each family gets its own batch. LUX, Mirror, iPad, Laptop and Kindle are not accepted.' },
+};
+let TPLS = {}, TPL_ORDER = [], TPL_DEFAULT = '6UP-EXT';
+const TPL_NAME = new Proxy({}, { get: (_, k) => (TPLS[k] ? TPLS[k].title.replace(/^Sublimation\s+/i, '') : k) });
+const perSheet = k => (TPLS[k] ? TPLS[k].slots : 6);
+// artworks per sheet PDF: every slot by default, or fewer when printing on fewer nesting jigs
+const usePer = g => { const o = optsFor(g), n = perSheet(o.template); return o.per > 0 ? Math.min(o.per, n) : n; };
+async function loadTemplates() {
+  try {
+    const r = await fetch('/api/sub/templates'); if (!r.ok) return;
+    const d = await r.json();
+    TPLS = Object.fromEntries(d.templates.map(t => [t.key, t])); TPL_ORDER = d.templates.map(t => t.key); TPL_DEFAULT = d.default;
+    if (proc === 'sub') render();
+    renderTemplates();
+  } catch (e) {}
+}
+const FAMILY_NAME = { BOLD: 'Bold', CLASSIC: 'Classic', ESSENTIAL: 'Essential', OTHER: 'Other', CUSTOM: 'Custom artwork' };
+const LINE_NAME = new Proxy({ LUX: 'LUX', MIRROR: 'Mirror', CUSTOM: 'Custom artwork' }, { get: (o, k) => o[k] || TPL_NAME[k] });
+let proc = 'uv';
+const store = {};
+function load(p) { try { return JSON.parse(localStorage.getItem(PROC[p].key) || '[]'); } catch (e) { return []; } }
+store.uv = load('uv'); store.sub = load('sub');
+let items = store[proc];
+const save = () => { try { localStorage.setItem(PROC[proc].key, JSON.stringify(items)); } catch (e) {} };
+const runResults = { uv: {}, sub: {} };
 const sheetCounts = {};
+const subOpts = {};  // group -> {template, color, mirror}
+
+// group key: UV by line (LUX/MIRROR); Sublimation by family + suggested template (Bold|6UP ...)
+const groupOf = it => proc === 'uv' ? (it.custom ? 'CUSTOM' : it.line) : (it.family || 'OTHER');
+const groupTitle = g => proc === 'uv' ? (LINE_NAME[g] || g) : (FAMILY_NAME[g] || g);
+const groupClass = g => 'grp-' + g;
+const ORDER = { uv: ['LUX', 'MIRROR', 'CUSTOM'], sub: ['BOLD', 'CLASSIC', 'ESSENTIAL', 'OTHER', 'CUSTOM'] };
 
 function beep(ok) {
   try {
@@ -253,9 +343,12 @@ const TONE = {
 };
 const BADGE = { good: 'cd-badge-success', mid: 'cd-badge-warning', bad: 'cd-badge-error', neutral: 'cd-badge-gray' };
 const chip = (kind, v) => `<span class="cd-badge ${BADGE[TONE[kind][v] || 'neutral']}">${esc(v || '—')}</span>`;
-const lineBadge = line => `<span class="cd-badge ${line === 'LUX' ? 'cd-badge-purple' : 'cd-badge-info'}">${esc(LINE_NAME[line] || line)}</span>`;
+const LINE_BADGE = { LUX: 'cd-badge-purple', MIRROR: 'cd-badge-info', CUSTOM: 'cd-badge-warning' };
+const lineBadge = line => `<span class="cd-badge ${LINE_BADGE[line] || 'cd-badge-cyan'}">${esc(LINE_NAME[line] || line)}</span>`;
+const famBadge = f => f ? `<span class="cd-badge ${f === 'BOLD' ? 'cd-badge-purple' : f === 'CLASSIC' ? 'cd-badge-success' : f === 'ESSENTIAL' ? 'cd-badge-cyan' : f === 'CUSTOM' ? 'cd-badge-warning' : 'cd-badge-gray'}">${esc(FAMILY_NAME[f] || f)}</span>` : '';
 // Reprints normally sit on orders already shipped/complete, so only flag a non-live job or a dead order.
-const needsAttention = it => it.job_status !== 'live' || ['cancelled', 'error'].includes(it.order_status);
+const needsAttention = it => !it.custom && (it.job_status !== 'live' || ['cancelled', 'error'].includes(it.order_status));
+const q = () => `process=${proc}`;
 
 // ---- tabs ----
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
@@ -310,13 +403,14 @@ $('scan').addEventListener('keydown', async e => {
   if (items.some(it => it.component_barcode === code || it.item_barcode === code)) { msg(`${code}: already in the list`, 'bad'); beep(false); return; }
   busy = true; msg(`Looking up ${code}…`); showReport([]);
   try {
-    const r = await fetch('/api/item/' + encodeURIComponent(code));
+    const r = await fetch('/api/item/' + encodeURIComponent(code) + '?' + q());
     if (r.status === 401) { location.href = '/login'; return; }
     const d = await r.json();
     if (!r.ok) { msg(d.error || 'Lookup failed', 'bad'); beep(false); return; }
     addItems([d]);
-    if (needsAttention(d)) { msg(`${code}: added to ${LINE_NAME[d.line]} · job ${d.job_status}, order ${d.order_status}. Check before printing.`, 'warn'); beep(false); }
-    else { msg(`${code}: ${d.label} · ${d.print_code} added to ${LINE_NAME[d.line]}`, 'ok'); beep(true); }
+    const where = groupTitle(groupOf(d));
+    if (needsAttention(d)) { msg(`${code}: added to ${where} · job ${d.job_status}, order ${d.order_status}. Check before printing.`, 'warn'); beep(false); }
+    else { msg(`${code}: ${d.label} · ${d.print_code} added to ${where}`, 'ok'); beep(true); }
   } catch (err) { msg('Network error: ' + err, 'bad'); beep(false); }
   finally { busy = false; $('scan').focus(); }
 });
@@ -326,7 +420,7 @@ $('paste').addEventListener('input', () => { const n = countCodes($('paste').val
 $('pasteGo').addEventListener('click', async () => {
   const text = $('paste').value; if (!countCodes(text)) return;
   $('pasteGo').disabled = true;
-  const ok = await bulk('/api/items', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text }) }, `${countCodes(text)} barcodes`);
+  const ok = await bulk('/api/items?' + q(), { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text }) }, `${countCodes(text)} barcodes`);
   if (ok) { $('paste').value = ''; $('pasteCount').textContent = ''; }
   $('pasteGo').disabled = false;
 });
@@ -334,7 +428,7 @@ $('pasteGo').addEventListener('click', async () => {
 async function upload(file) {
   if (!file) return;
   const fd = new FormData(); fd.append('file', file);
-  await bulk('/api/import', { method: 'POST', body: fd }, file.name);
+  await bulk('/api/import?' + q(), { method: 'POST', body: fd }, file.name);
   $('file').value = '';
 }
 $('file').addEventListener('change', e => upload(e.target.files[0]));
@@ -343,32 +437,140 @@ const drop = $('drop');
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => upload(e.dataTransfer.files[0]));
 
-// ---- batches (one per line; never mixed) ----
+// ---- custom artwork (UV and Sublimation): files or a link ----
+async function customAdd(promise, label) {
+  msg(`Adding ${label}…`); showReport([]);
+  try {
+    const r = await promise;
+    if (r.status === 401) { location.href = '/login'; return; }
+    const d = await r.json();
+    if (!r.ok) { msg(d.error || d.detail || 'Upload failed', 'bad'); beep(false); return; }
+    const { added, dupes } = addItems(d.items);
+    const errors = d.errors.concat(dupes.map(x => ({ ...x, error: 'This artwork is already in the list – raise its Copies instead' })));
+    msg(`${added.length} artwork(s) added to Custom artwork` + (errors.length ? ` · ${errors.length} not added` : ''), errors.length ? 'warn' : 'ok');
+    showReport(errors); beep(!errors.length);
+    return true;
+  } catch (err) { msg('Network error: ' + err, 'bad'); beep(false); }
+}
+function customFiles(files) {
+  if (!files || !files.length) return;
+  const fd = new FormData(); [...files].forEach(f => fd.append('files', f));
+  customAdd(fetch('/api/sub/custom/files', { method: 'POST', body: fd }), `${files.length} file(s)`).then(() => { $('cfile').value = ''; });
+}
+$('cfile').addEventListener('change', e => customFiles(e.target.files));
+const cdrop = $('cdrop');
+['dragenter', 'dragover'].forEach(ev => cdrop.addEventListener(ev, e => { e.preventDefault(); cdrop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => cdrop.addEventListener(ev, e => { e.preventDefault(); cdrop.classList.remove('over'); }));
+cdrop.addEventListener('drop', e => customFiles(e.dataTransfer.files));
+$('curlGo').addEventListener('click', async () => {
+  const url = $('curl').value.trim(); if (!url) return;
+  $('curlGo').disabled = true;
+  const ok = await customAdd(fetch('/api/sub/custom/url', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ url }) }), 'link');
+  if (ok) $('curl').value = '';
+  $('curlGo').disabled = false;
+});
+$('curl').addEventListener('keydown', e => { if (e.key === 'Enter') $('curlGo').click(); });
+
+// ---- batches (one per group; never mixed) ----
+const gid = g => g.replace(/[^A-Za-z0-9]/g, '_');
+function groups() {
+  const present = [...new Set(items.map(groupOf))];
+  const res = Object.keys(runResults[proc]);
+  const all = [...new Set([...ORDER[proc], ...present, ...res])];
+  return all.filter(g => present.includes(g) || runResults[proc][g]);
+}
+function optsFor(g) {
+  if (!subOpts[g]) subOpts[g] = { template: TPL_DEFAULT, color: 'CMYK', mirror: true, fit: false, per: 0, byModel: true };   // defaults: Extended, CMYK, flipped, actual size, one model per sheet
+  return subOpts[g];
+}
+function subControls(g) {
+  const o = optsFor(g);
+  return `<div class="subopts">
+    <label>Template
+      <select class="pulse-input" data-opt="template" data-g="${esc(g)}">
+        ${(TPL_ORDER.length ? TPL_ORDER : [o.template]).map(k => `<option value="${k}" ${o.template === k ? 'selected' : ''}>${esc(TPL_NAME[k])} (${perSheet(k)} per sheet)</option>`).join('')}
+      </select></label>
+    <label>Artworks per sheet
+      <select class="pulse-input" data-opt="per" data-g="${esc(g)}">
+        <option value="0" ${usePer(g) === perSheet(o.template) ? 'selected' : ''}>All ${perSheet(o.template)} (full sheet)</option>
+        ${Array.from({ length: perSheet(o.template) - 1 }, (_, i) => i + 1).map(n => `<option value="${n}" ${usePer(g) === n && n < perSheet(o.template) ? 'selected' : ''}>${n} per sheet</option>`).join('')}
+      </select></label>
+    ${g === 'CUSTOM' ? '' : `<label>Sheets
+      <select class="pulse-input" data-opt="byModel" data-g="${esc(g)}">
+        <option value="1" ${o.byModel ? 'selected' : ''}>Model-wise (one model per sheet)</option>
+        <option value="" ${o.byModel ? '' : 'selected'}>Mix models on a sheet</option>
+      </select></label>`}
+    <label>Export
+      <select class="pulse-input" data-opt="color" data-g="${esc(g)}">
+        <option value="CMYK" ${o.color === 'CMYK' ? 'selected' : ''}>CMYK PDF</option>
+        <option value="RGB" ${o.color === 'RGB' ? 'selected' : ''}>RGB PDF</option>
+      </select></label>
+    <label>Flip artwork
+      <span class="toggle"><input type="checkbox" data-opt="mirror" data-g="${esc(g)}" ${o.mirror ? 'checked' : ''}><span></span></span>
+      <span class="meta">${o.mirror ? 'mirrored (default)' : 'not mirrored'}</span></label>
+    ${g === 'CUSTOM' ? `<label>Size
+      <select class="pulse-input" data-opt="fit" data-g="CUSTOM">
+        <option value="" ${o.fit ? '' : 'selected'}>Actual size (file DPI)</option>
+        <option value="1" ${o.fit ? 'selected' : ''}>Fit to slot</option>
+      </select></label>` : ''}
+  </div>`;
+}
+function customTable(list) {
+  const uv = proc === 'uv';
+  const t = uv ? null : TPLS[optsFor('CUSTOM').template], fit = !uv && optsFor('CUSTOM').fit;
+  const slot = t ? t.slot_mm : null;
+  return `<div class="tw nordic-table-container"><table class="nordic-table">
+    <thead><tr><th>#</th><th>Artwork</th><th>${uv ? 'Name printed on the die' : 'Text printed beside the artwork'}</th><th>Copies</th><th>Size mm</th><th>File</th><th></th></tr></thead>
+    <tbody>${list.map((it, i) => {
+      const big = slot && !fit && (it.w_mm > slot[0] + 0.2 || it.h_mm > slot[1] + 0.2);
+      return `<tr>
+        <td>${i + 1}</td>
+        <td><img class="cthumb" loading="lazy" src="/api/thumb?url=${encodeURIComponent(it.fetch_url)}" alt=""></td>
+        <td class="wrap"><input class="cname" data-cname="${esc(it.component_barcode)}" value="${esc(it.name)}" maxlength="80" placeholder="${uv ? 'e.g. 15-PL' : 'e.g. #1234-iPhone 16 Pro-Custom'}"></td>
+        <td><input class="ccopies" type="number" min="1" max="500" data-ccopies="${esc(it.component_barcode)}" value="${Number(it.copies) || 1}"></td>
+        <td class="mono">${fit && slot ? 'fit to slot' : `${it.w_mm} × ${it.h_mm}`}<br><small>${Math.round(it.dpi)} dpi${it.low_dpi ? ' <span class="cd-badge cd-badge-warning">low dpi</span>' : ''}</small>
+          ${big ? '<div><span class="cd-badge cd-badge-error">larger than slot – use Fit to slot</span></div>' : ''}</td>
+        <td class="mono" style="max-width:140px;overflow:hidden;text-overflow:ellipsis">${esc(it.mode || '')}<br><small>${(it.px || []).join(' × ')} px</small></td>
+        <td><button class="x" title="Remove" data-rm="${esc(it.component_barcode)}">×</button></td>
+      </tr>`; }).join('')}</tbody></table></div>`;
+}
+// Sublimation sheets: mixed = pieces / per sheet; model-wise = each model rounded up to whole sheets
+function subSheetCount(g, list, pieceCount) {
+  const per = usePer(g);
+  if (g === 'CUSTOM' || !optsFor(g).byModel) return Math.ceil(pieceCount / per);
+  const byModel = {};
+  list.forEach(it => { byModel[it.model] = (byModel[it.model] || 0) + 1; });
+  return Object.values(byModel).reduce((n, c) => n + Math.ceil(c / per), 0);
+}
 function render() {
-  const html = LINES.map(line => {
-    const list = items.filter(it => it.line === line);
-    if (!list.length && !runResults[line]) return '';
+  const html = groups().map(g => {
+    const list = items.filter(it => groupOf(it) === g);
     const counts = {};
-    list.forEach(it => counts[it.label] = (counts[it.label] || 0) + 1);
+    list.forEach(it => { const k = it.custom ? (it.name || '') : proc === 'uv' ? it.label : it.model; counts[k] = (counts[k] || 0) + (it.custom ? Number(it.copies) || 1 : 1); });
     const attn = list.filter(needsAttention).length;
-    return `<section class="card" id="batch-${line}">
+    const id = gid(g);
+    const pieceCount = g === 'CUSTOM' ? list.reduce((n, it) => n + (Number(it.copies) || 1), 0) : list.length;
+    const sheets = proc === 'sub' ? subSheetCount(g, list, pieceCount) : sheetCounts[g];
+    return `<section class="card ${groupClass(g)}" id="batch-${id}">
       <div class="batch-h">
-        ${lineBadge(line)}
-        <h2>${list.length} piece(s)</h2>
-        <span class="meta" id="sheets-${line}">${list.length ? (sheetCounts[line] ? sheetCounts[line] + ' bed sheet(s)' : '…') : ''}</span>
+        ${proc === 'uv' ? lineBadge(g) : famBadge(g) + ' ' + lineBadge(optsFor(g).template)}
+        <h2>${g === 'CUSTOM' ? `${list.length} artwork(s) · ${pieceCount} piece(s)` : `${list.length} piece(s)`}</h2>
+        <span class="meta" id="sheets-${id}">${list.length ? (sheets ? sheets + ' ' + PROC[proc].unit : '…') : ''}</span>
         ${attn ? `<span class="cd-badge cd-badge-warning">${attn} need a status check</span>` : ''}
         <span class="sp"></span>
-        <button class="cd-btn cd-btn-secondary" data-clear="${line}" ${list.length ? '' : 'disabled'}>Clear</button>
-        <button class="cd-btn cd-btn-primary" data-gen="${line}" ${list.length ? '' : 'disabled'}>Generate ${LINE_NAME[line]} PDFs</button>
+        <button class="cd-btn cd-btn-secondary" data-clear="${esc(g)}" ${list.length ? '' : 'disabled'}>Clear</button>
+        <button class="cd-btn cd-btn-primary" data-gen="${esc(g)}" ${list.length ? '' : 'disabled'}>Generate ${esc(groupTitle(g))} PDF${proc === 'sub' ? '(s)' : 's'}</button>
       </div>
+      ${proc === 'sub' && list.length ? subControls(g) : ''}
       <div class="groups">${Object.entries(counts).map(([k, v]) => `${esc(k)} × ${v}`).join('   ·   ')}</div>
-      ${list.length ? `<div class="tw nordic-table-container"><table class="nordic-table">
-        <thead><tr><th>#</th><th></th><th>Model</th><th>Print code</th><th>Batch</th><th>Order</th><th>Component</th><th>Size mm</th><th>Status (Pulse)</th><th></th></tr></thead>
+      ${g === 'CUSTOM' && list.length ? customTable(list) : ''}
+      ${list.length && g !== 'CUSTOM' ? `<div class="tw nordic-table-container"><table class="nordic-table">
+        <thead><tr><th>#</th><th></th><th>${proc === 'uv' ? 'Model' : 'Name on sheet'}</th><th>Print code</th><th>Batch</th><th>Order</th><th>Component</th><th>Size mm</th><th>Status (Pulse)</th><th></th></tr></thead>
         <tbody>${list.map((it, i) => `
           <tr class="${needsAttention(it) ? 'attn' : ''}">
-            <td>${i + 1}</td>
+            <td>${proc === 'sub' ? `S${Math.floor(i / usePer(g)) + 1}-${i % usePer(g) + 1}` : i + 1}</td>
             <td><img loading="lazy" src="/api/thumb?url=${encodeURIComponent(it.fetch_url)}" alt=""></td>
-            <td><div class="lbl">${esc(it.label)}</div><small>${esc(it.model)}</small></td>
+            <td class="${proc === 'sub' ? 'wrap' : ''}"><div class="lbl" ${proc === 'sub' ? 'style="font-size:13px"' : ''}>${esc(it.label)}</div><small>${esc(proc === 'uv' ? it.model : it.batch_imposition)}</small></td>
             <td class="mono">${esc(it.print_code)}<br><small>${esc(it.print_sku)}</small></td>
             <td class="mono">${esc(it.batch_number)}</td>
             <td class="mono">${esc(it.order_number)}</td>
@@ -382,55 +584,86 @@ function render() {
             </div></td>
             <td><button class="x" title="Remove" data-rm="${esc(it.component_barcode)}">×</button></td>
           </tr>`).join('')}</tbody></table></div>` : ''}
-      <div class="result" style="${runResults[line] ? 'display:block' : ''}">${runResults[line] || ''}</div>
-      <div class="err" id="err-${line}"></div>
+      <div class="result" style="${runResults[proc][g] ? 'display:block' : ''}">${runResults[proc][g] || ''}</div>
+      <div class="err" id="err-${id}"></div>
     </section>`;
   }).join('');
-  $('batches').innerHTML = html || '<section class="card"><div class="empty">Nothing added yet. Scan, paste or upload LUX / Mirror component barcodes. Each line gets its own batch.</div></section>';
-  LINES.forEach(updateSheets);
+  $('batches').innerHTML = html || `<section class="card"><div class="empty">${PROC[proc].hint}</div></section>`;
+  if (proc === 'uv') groups().forEach(updateSheets);
 }
 
 const sheetTimers = {};
-function updateSheets(line) {
-  clearTimeout(sheetTimers[line]);
-  const list = items.filter(it => it.line === line);
+function updateSheets(g) {
+  clearTimeout(sheetTimers[g]);
+  const list = items.filter(it => groupOf(it) === g);
   if (!list.length) return;
-  sheetTimers[line] = setTimeout(async () => {
+  sheetTimers[g] = setTimeout(async () => {
     const r = await fetch('/api/layout', { method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ pieces: list.map(it => ({ label: it.label, w: it.w_pt, h: it.h_pt })) }) });
+      body: JSON.stringify({ pieces: list.flatMap(it => Array(it.custom ? Number(it.copies) || 1 : 1).fill({ label: it.label, w: it.w_pt, h: it.h_pt })) }) });
     const d = await r.json();
-    if (sheetCounts[line] !== d.sheets) { sheetCounts[line] = d.sheets; const el = $('sheets-' + line); if (el) el.textContent = d.sheets + ' bed sheet(s)'; }
+    if (sheetCounts[g] !== d.sheets) { sheetCounts[g] = d.sheets; const el = $('sheets-' + gid(g)); if (el) el.textContent = d.sheets + ' ' + PROC[proc].unit; }
   }, 150);
 }
 
+$('batches').addEventListener('input', e => {
+  const n = e.target.closest('[data-cname]'), c = e.target.closest('[data-ccopies]');
+  if (n) { const it = items.find(x => x.component_barcode === n.dataset.cname); if (it) { it.name = n.value; it.label = n.value; save(); } }
+  if (c) { const it = items.find(x => x.component_barcode === c.dataset.ccopies); if (it) { it.copies = Math.max(1, Math.min(500, parseInt(c.value) || 1)); save(); } }
+});
+const BOOL_OPTS = ['fit', 'byModel'];   // <select> options stored as true/false
+$('batches').addEventListener('change', e => {
+  if (e.target.closest('[data-ccopies]')) { render(); return; }
+  const el = e.target.closest('[data-opt]'); if (!el) return;
+  const o = optsFor(el.dataset.g);
+  const opt = el.dataset.opt;
+  o[opt] = el.type === 'checkbox' ? el.checked : BOOL_OPTS.includes(opt) ? el.value === '1' : opt === 'per' ? parseInt(el.value) || 0 : el.value;
+  render();
+});
+
 $('batches').addEventListener('click', async e => {
   const rm = e.target.closest('[data-rm]'), cl = e.target.closest('[data-clear]'), gen = e.target.closest('[data-gen]');
-  if (rm) { items = items.filter(it => it.component_barcode !== rm.dataset.rm); save(); render(); }
+  if (rm) { items = items.filter(it => it.component_barcode !== rm.dataset.rm); store[proc] = items; save(); render(); }
   if (cl) {
-    const line = cl.dataset.clear;
-    if (!confirm(`Clear all ${LINE_NAME[line]} pieces?`)) return;
-    items = items.filter(it => it.line !== line); delete runResults[line]; save(); render();
+    const g = cl.dataset.clear;
+    if (!confirm(`Clear all ${groupTitle(g)} pieces?`)) return;
+    items = items.filter(it => groupOf(it) !== g); store[proc] = items; delete runResults[proc][g]; save(); render();
   }
   if (gen) {
-    const line = gen.dataset.gen;
+    const g = gen.dataset.gen;
     gen.disabled = true; gen.textContent = 'Building PDFs…';
+    const body = { barcodes: items.filter(it => groupOf(it) === g).map(it => it.component_barcode), process: proc };
+    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g), ...(g !== 'CUSTOM' && { by_model: o.byModel }) }); }
+    if (g === 'CUSTOM') {
+      body.barcodes = [];
+      body.custom = items.filter(it => it.custom).map(it => ({ fetch_url: it.fetch_url, name: (it.name || '').trim() || 'Custom artwork', copies: Number(it.copies) || 1 }));
+    }
     try {
-      const r = await fetch('/api/runs', { method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ barcodes: items.filter(it => it.line === line).map(it => it.component_barcode) }) });
+      const r = await fetch('/api/runs', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
-      runResults[line] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${dlButtons(d.run_id)}`;
-      items = items.filter(it => it.line !== line); save(); render(); loadHistory();
+      const extra = d.process === 'sub'
+        ? ` · ${TPL_NAME[d.template]}${d.slots && d.per_sheet < d.slots ? ` · ${d.per_sheet} per sheet` : ''} ${d.custom ? '' : d.by_model ? ' · model-wise' : ' · models mixed'} · ${d.color} · ${d.mirror ? 'mirrored' : 'not mirrored'}${d.custom ? (d.fit ? ' · fit to slot' : ' · actual size') : ''}${d.converted ? ` · ${d.converted} file(s) converted to ${d.color}` : ''}`
+          + (d.warnings && d.warnings.length ? `<br><span style="color:var(--warning)">⚠ ${d.warnings.map(esc).join('<br>⚠ ')}</span>` : '')
+        : '';
+      runResults[proc][g] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${d.batches ? ` · batch ${d.batches.map((b, i) => `S${i + 1} = <b>${esc(b)}</b>`).join(', ')}` : ''}${extra}${dlButtons(d)}`;
+      items = items.filter(it => groupOf(it) !== g); store[proc] = items; save(); render(); loadHistory();
     } catch (err) {
-      const el = $('err-' + line); el.textContent = err.message; el.style.display = 'block';
-      gen.disabled = false; gen.textContent = `Generate ${LINE_NAME[line]} PDFs`;
+      const el = $('err-' + gid(g)); el.textContent = err.message; el.style.display = 'block';
+      gen.disabled = false; gen.textContent = `Generate ${groupTitle(g)} PDF${proc === 'sub' ? '(s)' : 's'}`;
     }
   }
 });
 
-function dlButtons(runId, small) {
-  const b = '/runs/' + encodeURIComponent(runId) + '/';
-  const sz = small ? ' cd-btn-sm' : ' cd-btn-sm';
+function dlButtons(m, small) {
+  const b = '/runs/' + encodeURIComponent(m.run_id) + '/';
+  const sz = ' cd-btn-sm';
+  if (m.process === 'sub') {
+    return `<div class="dl${small ? ' sm' : ''}">
+    <a class="cd-btn${sz} zip" href="${b}zip">⬇ ZIP</a>
+    <a class="cd-btn${sz} print" href="${b}file" target="_blank">${m.sheets > 1 ? `Sheet PDFs (${m.sheets})` : 'Sheet PDF'}</a>
+    <a class="cd-btn${sz} die" href="${b}labels" target="_blank">${m.sheets > 1 ? `Labels (${m.sheets})` : 'Labels'}</a>
+    <a class="cd-btn${sz} xlsx" href="${b}xlsx">Excel</a></div>`;
+  }
   return `<div class="dl${small ? ' sm' : ''}">
     <a class="cd-btn${sz} zip" href="${b}zip">⬇ ZIP</a>
     <a class="cd-btn${sz} print" href="${b}file" target="_blank">File PDF</a>
@@ -438,19 +671,28 @@ function dlButtons(runId, small) {
     <a class="cd-btn${sz} spot" href="${b}spot" target="_blank">Spot PDF</a>
     <a class="cd-btn${sz} xlsx" href="${b}xlsx">Excel</a></div>`;
 }
+const runProc = m => m.process || (m.run_id.startsWith('SUB_') ? 'sub' : 'uv');
+const runBadges = m => runProc(m) === 'sub'
+  ? `${famBadge(m.family)} ${lineBadge(m.template || m.line)} <span class="cd-badge cd-badge-gray">${esc(m.color || '')}${m.mirror === false ? ' · not mirrored' : ''}</span>`
+  : lineBadge(m.line);
 
 let allRuns = [];
 function renderHistory() {
-  const line = $('hFilter').value, q = $('hSearch').value.trim().toLowerCase();
-  const rows = allRuns.filter(m => (!line || m.line === line) &&
-    (!q || m.run_id.toLowerCase().includes(q) || (m.user || '').toLowerCase().includes(q)));
+  const f = $('hFilter').value, qs = $('hSearch').value.trim().toLowerCase();
+  const rows = allRuns.filter(m => runProc(m) === proc && (!f || m.line === f || m.family === f) &&
+    (!qs || m.run_id.toLowerCase().includes(qs) || (m.user || '').toLowerCase().includes(qs)));
   $('hist').innerHTML = rows.map(m => `<tr>
       <td class="mono"><b>${esc(m.run_id)}</b></td>
-      <td>${lineBadge(m.line)}</td>
+      <td>${runBadges(m)}</td>
       <td>${esc(m.created.replace('T', ' '))}</td>
       <td>${m.pieces}</td><td>${m.sheets}</td><td>${esc(m.user)}</td>
-      <td>${dlButtons(m.run_id, true)}</td></tr>`).join('');
+      <td>${dlButtons({ ...m, process: runProc(m) }, true)}</td></tr>`).join('');
   $('histEmpty').style.display = rows.length ? 'none' : 'block';
+}
+function historyFilters() {
+  const opts = proc === 'uv' ? [['LUX', 'LUX'], ['MIRROR', 'Mirror'], ['CUSTOM', 'Custom artwork']]
+    : [['BOLD', 'Bold'], ['CLASSIC', 'Classic'], ['ESSENTIAL', 'Essential'], ['CUSTOM', 'Custom artwork'], ...TPL_ORDER.map(k => [k, TPL_NAME[k]])];
+  $('hFilter').innerHTML = '<option value="">All</option>' + opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
 }
 $('hFilter').addEventListener('change', renderHistory);
 $('hSearch').addEventListener('input', renderHistory);
@@ -459,23 +701,41 @@ async function loadHistory() {
   const r = await fetch('/api/runs'); if (!r.ok) return;
   allRuns = await r.json();
   renderHistory();
-  const m = allRuns[0];
-  $('last').innerHTML = m ? `<div class="cd-kpi-label">Last batch</div>
+  const m = allRuns.find(x => runProc(x) === proc);
+  $('last').innerHTML = m ? `<div class="cd-kpi-label">Last ${PROC[proc].name} batch</div>
       <div class="cd-kpi-value">${esc(m.run_id)}</div>
-      <div class="cd-kpi-sub">${esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
-      ${dlButtons(m.run_id)}`
-    : '<div class="cd-kpi-label">Last batch</div><div class="cd-kpi-sub" style="margin-top:6px">No batches generated yet.</div>';
+      <div class="cd-kpi-sub">${runProc(m) === 'sub' ? `${esc(FAMILY_NAME[m.family] || '')} · ${esc(TPL_NAME[m.template] || '')} · ${esc(m.color || '')}` : esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
+      ${dlButtons({ ...m, process: runProc(m) })}`
+    : `<div class="cd-kpi-label">Last ${PROC[proc].name} batch</div><div class="cd-kpi-sub" style="margin-top:6px">No batches generated yet.</div>`;
 }
 
 const PAGES = {
-  build: ['UV Mix · Build batch', 'Scan, paste or upload LUX & Mirror component barcodes → File, Die and Spot PDFs + Excel.'],
-  history: ['UV Mix · History', 'Every generated batch with its File, Die, Spot PDFs and Excel.'],
+  uv: {
+    build: ['UV Mix · Build batch', 'Scan, paste or upload LUX & Mirror component barcodes, or add custom artwork → File, Die and Spot PDFs + Excel.'],
+    history: ['UV Mix · History', 'Every generated UV batch with its File, Die, Spot PDFs and Excel.'],
+  },
+  sub: {
+    build: ['Sublimation · Build batch', 'Scan, paste or upload Bold / Classic / Essential component barcodes → mirrored sheets on any template (CMYK or RGB) + Excel.'],
+    history: ['Sublimation · History', 'Every generated Sublimation batch with its sheet PDFs and Excel.'],
+    templates: ['Sublimation · Templates', 'Sheet templates (1UP, 6UP, 10UP, ...). Upload a dieline; it becomes available in every batch.'],
+  },
 };
-function showView(view) {
+function showView(view, p) {
+  if (p && p !== proc) {          // switch process: keep each process's own scan list
+    store[proc] = items; proc = p; items = store[proc];
+    $('scan').placeholder = proc === 'sub' ? 'Scan Sublimation component barcode (B433…)' : 'Scan component barcode (B433…)';
+    historyFilters(); render(); msg(''); showReport([]);
+  }
+  $('customHint').textContent = proc === 'uv'
+    ? 'Custom artwork goes into its own UV batch below: type the name to print on the die, set copies, then generate — File, Die (cut at the exact image size) and Spot PDFs + Excel on the 2180 × 1220 mm bed.'
+    : 'Custom artwork goes into its own batch below: type the text to print beside each piece, set copies, then generate — same template, flip and CMYK/RGB options.';
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + view));
-  document.querySelectorAll('#navMenu [data-view]').forEach(a => a.classList.toggle('top-nav__dropdown-link--active', a.dataset.view === view));
-  $('pageTitle').textContent = PAGES[view][0]; $('pageSub').textContent = PAGES[view][1];
-  if (view === 'history') loadHistory(); else if ($('pane-scan').classList.contains('on')) $('scan').focus();
+  document.querySelectorAll('#navMenu [data-view]').forEach(a => a.classList.toggle('top-nav__dropdown-link--active', a.dataset.view === view && a.dataset.proc === proc));
+  $('pageTitle').textContent = PAGES[proc][view][0]; $('pageSub').textContent = PAGES[proc][view][1];
+  try { localStorage.setItem('mb.view', JSON.stringify([view, proc])); } catch (e) {}
+  loadHistory();
+  if (view === 'templates') loadTemplates();
+  if (view === 'build' && $('pane-scan').classList.contains('on')) $('scan').focus();
 }
 function toggleMenu(btn, menu, open) {
   const show = open ?? menu.hidden;
@@ -483,18 +743,75 @@ function toggleMenu(btn, menu, open) {
 }
 $('navBatching').addEventListener('click', e => { e.stopPropagation(); $('userMenu').hidden = true; toggleMenu($('navBatching'), $('navMenu')); });
 $('userBtn').addEventListener('click', e => { e.stopPropagation(); toggleMenu($('navBatching'), $('navMenu'), false); $('userMenu').hidden = !$('userMenu').hidden; });
-document.querySelectorAll('#navMenu [data-view]').forEach(a => a.addEventListener('click', () => { toggleMenu($('navBatching'), $('navMenu'), false); showView(a.dataset.view); }));
+document.querySelectorAll('#navMenu [data-view]').forEach(a => a.addEventListener('click', () => { toggleMenu($('navBatching'), $('navMenu'), false); showView(a.dataset.view, a.dataset.proc); }));
 document.addEventListener('click', e => {
   if (!e.target.closest('#navMenu, #navBatching')) toggleMenu($('navBatching'), $('navMenu'), false);
   if (!e.target.closest('#userMenu, #userBtn')) $('userMenu').hidden = true;
 });
 
-fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => { if (d) { $('who').textContent = d.user; $('who2').textContent = d.user; $('av').textContent = (d.user || '?')[0].toUpperCase(); } });
+fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => {
+  if (!d) return;
+  $('who').textContent = d.user; $('who2').textContent = d.user; $('av').textContent = (d.user || '?')[0].toUpperCase();
+  let saved = null; try { saved = localStorage.getItem('mb.view'); } catch (e) {}
+  if (!saved && d.default_process && d.default_process !== proc) showView('build', d.default_process);   // team's home page
+});
 document.addEventListener('click', e => {
   if ($('view-build').classList.contains('on') && $('pane-scan').classList.contains('on') &&
       !e.target.closest('input,button,a,textarea,label,table,select')) $('scan').focus();
 });
-render(); loadHistory();
+// ---- templates page ----
+function tplSvg(t, H = 150) {
+  const [pw, ph] = t.layout.page, k = H / ph, W = Math.max(40, pw * k);
+  const slots = t.layout.slots.map((s, i) => {
+    const x = s[0] * k, y = (ph - s[1] - s[3]) * k, w = s[2] * k, h = s[3] * k;
+    const nm = t.layout.names[i];
+    const nx = nm ? nm.x * k - 2 : null;
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#eef2ff" stroke="#667eea" stroke-width="1"/>
+      <text x="${x + w / 2}" y="${y + h / 2 + 4}" font-size="${Math.max(8, Math.min(14, w / 3))}" text-anchor="middle" fill="#4338ca">${i + 1}</text>
+      ${nm ? `<line x1="${nx}" y1="${y + h * 0.2}" x2="${nx}" y2="${y + h * 0.8}" stroke="#334155" stroke-width="1.5"/>` : ''}`;
+  }).join('');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="#fff" stroke="#cbd5e1"/>${slots}</svg>`;
+}
+function renderTemplates() {
+  const el = $('tplList'); if (!el) return;
+  el.innerHTML = TPL_ORDER.map(k => { const t = TPLS[k]; return `<section class="card tpl-card">
+      ${tplSvg(t)}
+      <div>
+        <h3>${esc(t.title)}</h3>
+        <div>${t.builtin ? '<span class="cd-badge cd-badge-gray">built-in</span>' : '<span class="cd-badge cd-badge-info">uploaded</span>'}
+             ${k === TPL_DEFAULT ? '<span class="cd-badge cd-badge-success">default</span>' : ''}</div>
+        <div class="meta">Key <b class="mono">${esc(k)}</b><br>${t.slots} per sheet<br>Sheet ${t.page_mm[0]} × ${t.page_mm[1]} mm<br>Slot ${t.slot_mm[0]} × ${t.slot_mm[1]} mm
+          ${t.removed && (t.removed.qr || t.removed.frames) ? `<br><small>Not printed: ${t.removed.frames || 0} frames${t.removed.qr ? `, ${t.removed.qr} QR` : ''}</small>` : ''}</div>
+        ${t.builtin ? '' : `<button class="cd-btn cd-btn-secondary cd-btn-sm" data-deltpl="${esc(k)}" style="margin-top:8px">Delete</button>`}
+      </div></section>`; }).join('');
+}
+$('tplForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target); $('tplGo').disabled = true; $('tplMsg').textContent = 'Uploading and detecting slots…'; $('tplMsg').style.color = '';
+  try {
+    const r = await fetch('/api/sub/templates', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Upload failed');
+    $('tplMsg').textContent = `✓ ${d.title}: ${d.slots} slot(s) detected, sheet ${d.page_mm[0]} × ${d.page_mm[1]} mm, slot ${d.slot_mm[0]} × ${d.slot_mm[1]} mm. Check the diagram below.`;
+    $('tplMsg').style.color = 'var(--color-success)'; e.target.reset(); await loadTemplates();
+  } catch (err) { $('tplMsg').textContent = err.message; $('tplMsg').style.color = 'var(--color-error)'; }
+  finally { $('tplGo').disabled = false; }
+});
+$('tplList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-deltpl]'); if (!b) return;
+  if (!confirm(`Delete template ${b.dataset.deltpl}? Existing batches keep their PDFs.`)) return;
+  const r = await fetch('/api/sub/templates/' + encodeURIComponent(b.dataset.deltpl), { method: 'DELETE' });
+  const d = await r.json(); if (!r.ok) { alert(d.error || 'Delete failed'); return; }
+  Object.keys(subOpts).forEach(g => { if (subOpts[g].template === b.dataset.deltpl) subOpts[g].template = TPL_DEFAULT; });
+  loadTemplates();
+});
+
+historyFilters();
+loadTemplates();
+let start = ['build', 'uv'];
+try { start = JSON.parse(localStorage.getItem('mb.view') || 'null') || start; } catch (e) {}
+showView(start[0], start[1]);
+render();
 </script>
 </body>
 </html>

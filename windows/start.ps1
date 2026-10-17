@@ -1,5 +1,5 @@
-# UV Mix Batch - start the portal on this PC (http://localhost:8765).
-# Run by double-clicking "Start UV Mix.bat" in the main folder. Keep the window open while working.
+# Manual Batching (UV Mix + Sublimation) - start the portal on this PC (http://localhost:8765).
+# Run by double-clicking "Start Manual Batching.bat" in the main folder. Keep the window open while working.
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
@@ -24,13 +24,15 @@ Get-Content ".env" | ForEach-Object {
 }
 # Local use: plain http, so cookies must not require https
 [Environment]::SetEnvironmentVariable("COOKIE_SECURE", "0", "Process")
+# Python reads/writes text as UTF-8 everywhere (Windows would otherwise default to cp1252)
+[Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Process")
 if (-not $env:SECRET_KEY) {
     [Environment]::SetEnvironmentVariable("SECRET_KEY", [guid]::NewGuid().ToString() + [guid]::NewGuid().ToString(), "Process")
 }
 
 $port = 8765
 Write-Host ""
-Write-Host "=== UV Mix Batch is running ===" -ForegroundColor Green
+Write-Host "=== Manual Batching is running ===" -ForegroundColor Green
 Write-Host "Open: http://localhost:$port   (opening your browser now)"
 Write-Host "Keep this window open. Close it to stop the portal."
 Write-Host "Batches are saved in: $Root\data\runs"

@@ -12,6 +12,8 @@ The **Manual Batching ▾** menu has two processes, and each one has its own **B
 
 Both processes accept barcodes the same way, and both have a **Custom artwork** tab for files that aren't Pulse orders.
 
+**Developers** integrating this into Pulse: start with [DEVELOPERS.md](DEVELOPERS.md).
+
 > **Branches:** `sublimation` has the full portal (UV Mix + Sublimation) and is the branch to use.
 > `main` holds the UV Mix version and the notes, until Sublimation is approved and merged.
 
@@ -169,7 +171,7 @@ curl -s localhost:8000/healthz      # {"ok":true}
 ```
 The repo is **private**, so `git clone` asks for your GitHub username and a **personal access token** (GitHub › Settings › Developer settings › Fine-grained tokens, read-only access to this repo) as the password. A deploy key also works.
 
-Everything that must survive updates lives in `/srv/manual-batching-data`: runs (History), downloaded print files, uploaded Sublimation templates and the batch-number counter.
+Keep that folder on the server's own disk (EBS), not a network share: the batch-number lock needs a local disk. Everything that must survive updates lives in `/srv/manual-batching-data`: runs (History), downloaded print files, uploaded Sublimation templates and the batch-number counter.
 
 **Batch numbers:** the test PCs each counted from MB00001, so start the live counter above them before the first batch, e.g. `echo 10000 | sudo tee /srv/manual-batching-data/runs/batch_counter.txt` (after creating that `runs` folder, owned by user 1000). The first live sheet is then MB10001.
 
@@ -218,4 +220,6 @@ The History, templates and counter are kept, because they live in the data folde
 | `tools/make_team_zip.py` | Rahul runs it: Windows test package with pre-filled `.env` (git-ignored `dist/`) |
 | `Setup.bat`, `Start Manual Batching.bat`, `windows/` | Windows setup, DB check and launcher |
 | `start-mac.sh` | Start the portal on Rahul's Mac (DB login from `~/Dev/Pulse/.env`, portal settings from `.env`) |
+| `tests/test_smoke.py` | Quick checks with no DB: `.venv/bin/python tests/test_smoke.py` |
+| `DEVELOPERS.md` | Handover for the Pulse developers: architecture, Pulse tables read, API, integration plan |
 | `chat/`, `SCRATCHPAD.md`, `docs/claude-memory/` | Notes: chat transcript, work log and open items, Claude's memory |

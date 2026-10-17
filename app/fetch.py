@@ -49,9 +49,11 @@ def image_info(path):
         w, h = im.size
         dpi = im.info.get("dpi") or (DEFAULT_DPI, DEFAULT_DPI)
         fmt = im.format
+        mode = "CMYK" if im.mode == "CMYK" else "RGB"
     dx, dy = (_clean_dpi(d) for d in dpi[:2])
     return {
         "format": fmt,
+        "mode": mode,
         "px": (w, h),
         "dpi": (dx, dy),
         "w_pt": w / dx * 72.0,
