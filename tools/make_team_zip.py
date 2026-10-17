@@ -32,6 +32,7 @@ def main():
     ap.add_argument("--login", default="uvteam", help="portal username for this team")
     ap.add_argument("--process", choices=("uv", "sub"), default="uv", help="page the portal opens on")
     ap.add_argument("--out", default="UV-Mix-Batch-Windows-TEAM.zip", help="file name in dist/")
+    ap.add_argument("--password", help="portal password for this team (default: a new random one)")
     args = ap.parse_args()
     out_zip = ROOT / "dist" / args.out
     db = {"DB_HOST": "pulse.getmt3.com", "DB_PORT": "3306", "DB_NAME": "mt3narada"}
@@ -45,7 +46,7 @@ def main():
         sys.exit(f"DB_USER / DB_PASSWORD not found in {PULSE_ENV}")
 
     user = args.login
-    pw = secrets.token_urlsafe(9)
+    pw = args.password or secrets.token_urlsafe(9)
     env = (
         "# Manual Batching - team test PC settings (pre-filled). CONFIDENTIAL: contains the Pulse database login.\n"
         + "".join(f"{k}={db[k]}\n" for k in ("DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"))
