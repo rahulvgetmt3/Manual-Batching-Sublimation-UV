@@ -72,6 +72,7 @@ Sublimation items are **all Bold, Classic and Essential items**, every model, on
   - **Template:** any template; the default is **6UP Extended**.
   - **Export:** **CMYK** (the default) or RGB.
   - **Flip artwork:** on by default, giving mirrored artwork.
+  - **Sheets:** **Model-wise** (the default: each sheet holds one model only, so the last sheet of a model may be part-filled) or **Mix models** (every sheet filled in scan order). Models are taken from Pulse; custom artwork is always filled in order.
   - **Artworks per sheet:** 1 up to the template's slot count, for printing on fewer nesting jigs. The first slots are filled in order (TL, TR, ML, …); the rest stay empty. Labels and positions follow the chosen count.
 - **Output:**
   - one PDF per sheet (`…_S1.pdf`, `…_S2.pdf`, …);

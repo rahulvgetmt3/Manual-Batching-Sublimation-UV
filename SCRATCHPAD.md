@@ -35,6 +35,7 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 - [ ] **Scan-test the Code 128 barcode** on the BATCH ID label (not scanned yet).
 - [ ] **Batch number counter is per PC** until hosting: two team PCs can both print MB00001. Decide if that's OK or change the format (e.g. date-based).
 - [ ] Optional: add the sheet batch number as a column in the Excel.
+- [ ] Confirm with the operators that **Model-wise** should stay the default (it uses more sheets than Mix).
 
 **Known data issues**
 - [ ] **B433C9774F** (Mirror 17-P) returned 403 earlier, then downloaded fine later. Watch for other old printcloud `fetch_url`s.
@@ -46,11 +47,16 @@ To keep it current: after each session, add a dated entry at the top of the **Lo
 | 2026-10-11 | Mac | `38c655b4` | HP and Pulse access check; Current Work counts; LUX file download; portal designed and built (scan, bulk, upload, LUX/Mirror batches, File/Die/Spot/Excel, history, login); fixes for full-bed bounding box, right-aligned layout, Spot as a Photoshop-style PDF (Alph block), RIP-safe Die, Reconcile `LUX-15-PL`; GitHub repo; Windows test package; team connected |
 | 2026-10-12 | Mac | `38c655b4` (same session) | Pulse theme (verbatim Pulse CSS, Manual Batching dropdown), layout fix, **Sublimation**: 6UP/6UP-EXT templates, mirrored/centred sheets, names, Bold/Classic/Essential, all models, CMYK/RGB, flip toggle, any-size uploadable templates; branch `sublimation` |
 | 2026-10-13 | Mac | `38c655b4` (same session) | Artworks per sheet, batching simplification, folder + GitHub repo renames |
-| 2026-10-13 → 16 | Mac | `a46c2f98` | Old chat recovered after the folder rename; README covers UV + Sublimation (both branches); **Sublimation sheet batch numbers** (red MB number on sheet + BATCH ID label page); team update ZIP |
+| 2026-10-13 → 17 | Mac | `a46c2f98` | Old chat recovered after the folder rename; README covers UV + Sublimation (both branches); **Sublimation sheet batch numbers** (red MB number on sheet + BATCH ID label page); **model-wise sheets** option; team update ZIPs |
 
 The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/settings.json`, so the original won't be auto-deleted either.
 
 ## Log
+
+### 2026-10-17: Model-wise Sublimation sheets
+- Rahul: operators need one model per sheet; give a choice. Added a **Sheets** option per Sublimation order batch: **Model-wise** (default) or **Mix models** (`726582a`). Groups by Pulse model in first-seen order; the last sheet of a model may be part-filled. Custom artwork is unchanged. The Excel Pieces sheet is now sorted by sheet/position.
+- Tested with 8 real Bold items over 5 models: 5 sheets model-wise vs 2 mixed; label PDFs and batch numbers follow the sheets.
+- Rebuilt `dist/Manual-Batching-UPDATE.zip` (includes the 10-16 batch numbers; Setup.bat required). Rahul is sending it to both teams.
 
 ### 2026-10-16: Sublimation sheet batch numbers
 - Rahul asked for a batch number top right of each Sublimation sheet, plus a page in the label PDF with the same number, so the operator knows which labels go with which sheet. He shared SiteFlow's current version (red batch ID beside the colour bar; BATCH ID label with barcode, route, date, QTY, product).
