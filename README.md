@@ -7,7 +7,7 @@ The **Manual Batching ▾** menu has two processes, and each one has its own **B
 
 | Process | Products | Output per batch |
 |---|---|---|
-| [**UV Mix**](#uv-mix-lux--mirror) | LUX and Mirror | File, Die and Spot PDFs on a 2180 × 1220 mm bed, Excel, ZIP |
+| [**UV Mix**](#uv-mix-lux--mirror) | LUX and Mirror | File, Die and Spot PDFs on a 2180 × 1220 mm bed, 2 × 1 in labels, Excel, ZIP |
 | [**Sublimation**](#sublimation) | Bold, Classic and Essential | One mirrored sheet PDF per template sheet, 2 × 1 in labels, Excel, ZIP |
 
 Both processes accept barcodes the same way, and both have a **Custom artwork** tab for files that aren't Pulse orders.
@@ -41,10 +41,11 @@ For a 2180 × 1220 mm UV bed, each run gives you:
   - **Photoshop's private round-trip data**, so Photoshop reopens the file with layers and the spot channel. This is CompositeImage, SpotChannels, ImageResources (300 ppi) and StandardImageFileData2, the layer data in Photoshop's large-document format with one layer per piece.
 
   Multi-sheet runs produce `_SPOT_S1.pdf`, `_SPOT_S2.pdf` and so on. The ink name can be changed with `SPOT_NAME`.
+- **`…_S1_LABELS.pdf`**: **2 × 1 in item labels**, one PDF per bed sheet and one label per piece, in the same order as the Pieces sheet for that bed (piece 1 = top right). Same design as the Sublimation labels. They have no batch page, because the bed PDFs carry no batch number.
 - **`…_manifest.xlsx`**: first sheet **Reconcile** in the team's tracking format: A = Reconcile (batch number), B = Model (Pulse model name), C = Qty., one row per batch + model, sorted by batch number. Second sheet **Pieces**: sheet, position, label, batch number, order number, HP order ID, component and item barcodes, print code and SKU, model, case type, exact Pulse **job / order / item status**, reprint and its reason, the time HP last updated the status, size and file URL.
 - **`files/`**: the source files, named `S<sheet>-<pos>_<batch>_<printcode>_<barcode>`.
 
-**UV custom artwork** goes into its own `UV_CUSTOM_…` batch with the same File, Die and Spot PDFs + Excel. Each die cut is the image's exact size at its DPI. The typed name is printed above it on the die only, and shrinks if it is wider than the piece. In the Excel, Reconcile shows `CUSTOM` and Model shows the typed name.
+**UV custom artwork** goes into its own `UV_CUSTOM_…` batch with the same File, Die and Spot PDFs + Excel, plus basic 2 × 1 labels (batch, typed name, sheet position, copy n of N). Each die cut is the image's exact size at its DPI. The typed name is printed above it on the die only, and shrinks if it is wider than the piece. In the Excel, Reconcile shows `CUSTOM` and Model shows the typed name.
 
 ### Colour handling
 The PDFs carry each file's pixels exactly as supplied. There is no CMYK conversion, no
@@ -212,7 +213,7 @@ The History, templates and counter are kept, because they live in the data folde
 | `app/manifest.py` | Excel manifest (Reconcile + Pieces) |
 | `app/sub_templates.py` | Sublimation templates: detect slots/names, clean, registry (built-in + uploaded) |
 | `app/sub_build.py` | Sublimation sheet PDFs (mirror, centre, names, fit-to-slot, RGB/CMYK) |
-| `app/labels.py` | Sublimation 2 × 1 in item labels |
+| `app/labels.py` | 2 × 1 in item labels (UV and Sublimation) and the Sublimation BATCH ID label |
 | `app/static/` | Build/History screen (`index.html`) + login page |
 | `app/static/pulse-shell.css` | Pulse's own CSS (copied verbatim) so the UI matches and ports into Pulse |
 | `tools/build_sub_templates.py` | Rebuild built-in 6UP / 6UP-EXT templates from the team's .ai files |

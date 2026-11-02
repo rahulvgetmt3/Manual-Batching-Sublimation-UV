@@ -158,10 +158,23 @@ def _artworks(custom):
     return [{"name": c.get("name"), "copies": c.get("copies", 1), "file": c.get("fetch_url")} for c in custom]
 
 
-# ---- UV bed (LUX / Mirror / custom): File, Die, Spot PDFs + Excel ----
+# ---- UV bed (LUX / Mirror / custom): File, Die, Spot PDFs + 2x1 labels + Excel ----
 
-def _uv_outputs(out, run_id, items, pieces):
-    """Lay out and write File, Die, Spot (per sheet) PDFs and the manifest -> (placements, outputs)."""
+def _uv_labels(out, run_id, placements, labels):
+    """One 2x1 label PDF per bed sheet, in bed order (piece 1 = top right), as for Sublimation.
+    labels(on_sheet, s) -> (entries, ops_fn). No batch page: the bed PDFs carry no batch number."""
+    pdfs = []
+    for s in sorted({p.sheet for p in placements}):
+        on_sheet = sorted((p for p in placements if p.sheet == s), key=lambda p: p.position)
+        path = out / f"{run_id}_S{s}_LABELS.pdf"
+        entries, ops_fn = labels(on_sheet, s)
+        build_labels(entries, path, path.stem, ops_fn)
+        pdfs.append(path)
+    return pdfs
+
+
+def _uv_outputs(out, run_id, items, pieces, labels):
+    """Lay out and write File, Die, Spot (per sheet) PDFs, label PDFs and the manifest -> (placements, outputs)."""
     placements = layout(pieces)
     file_pdf, die_pdf = out / f"{run_id}_FILE.pdf", out / f"{run_id}_DIE.pdf"
     xlsx = out / f"{run_id}_manifest.xlsx"
@@ -172,8 +185,9 @@ def _uv_outputs(out, run_id, items, pieces):
         sp = out / (f"{run_id}_SPOT.pdf" if sheets == 1 else f"{run_id}_SPOT_S{s}.pdf")
         build_spot_pdf([p for p in placements if p.sheet == s], pieces, items, sp, sp.stem)
         spot_pdfs.append(sp)
+    label_pdfs = _uv_labels(out, run_id, placements, labels)
     write_manifest(placements, items, xlsx, run_id)
-    return placements, [file_pdf, die_pdf, *spot_pdfs, xlsx]
+    return placements, [file_pdf, die_pdf, *spot_pdfs, *label_pdfs, xlsx]
 
 
 def create_run(barcodes, user=""):
@@ -194,12 +208,13 @@ def create_run(barcodes, user=""):
         pieces.append({"label": it.label, "w": info["w_pt"], "h": info["h_pt"], "path": path, "info": info})
 
     run_id, out = _new_run(line)
-    placements, outputs = _uv_outputs(out, run_id, items, pieces)
+    placements, outputs = _uv_outputs(out, run_id, items, pieces,
+                                      lambda on_sheet, s: ([items[p.index] for p in on_sheet], label_ops))
     for p in placements:
         it, src = items[p.index], pieces[p.index]["path"]
         name = f"S{p.sheet}-{p.position:03d}_{it.batch_number}_{_safe(it.print_code)}_{it.component_barcode}{src.suffix}"
         shutil.copyfile(src, out / "files" / name)
-    return _finish(out, {"process": "uv", "line": line, "user": user, "pieces": len(items),
+    return _finish(out, {"process": "uv", "line": line, "user": user, "pieces": len(items), "labels": True,
                          "sheets": max(p.sheet for p in placements), "barcodes": barcodes}, outputs)
 
 
@@ -208,19 +223,25 @@ def create_uv_custom_run(custom, user=""):
     same right-aligned layout as LUX/Mirror. Die = each image's exact size; the die label is the
     text typed in the table. Copies repeat an artwork."""
     items, pieces, infos = [], [], {}
-    for it, path, n, _ in _custom_pieces(custom):
+    for it, path, n, copies in _custom_pieces(custom):
         items.append(Item(label=it["name"], line="CUSTOM", reconcile_model=it["name"], batch_number="CUSTOM",
                           component_barcode=f"{it['component_barcode']}-{n}", job_status="custom",
                           fetch_url=it["fetch_url"]))
         if path not in infos:
             infos[path] = image_info(path)
-        pieces.append({"label": it["name"], "w": it["w_pt"], "h": it["h_pt"], "path": path, "info": infos[path]})
+        pieces.append({"label": it["name"], "w": it["w_pt"], "h": it["h_pt"], "path": path, "info": infos[path],
+                       "copy_no": n, "copies": copies})
 
     run_id, out = _new_run("CUSTOM")
-    placements, outputs = _uv_outputs(out, run_id, items, pieces)
+    # basic 2x1" labels from the table, same as Sublimation custom artwork
+    placements, outputs = _uv_outputs(out, run_id, items, pieces, lambda on_sheet, s: (
+        [{"run_id": run_id, "pos": f"S{s}-{p.position}", "name": pieces[p.index]["label"],
+          "copy_no": pieces[p.index]["copy_no"], "copies": pieces[p.index]["copies"]} for p in on_sheet],
+        custom_label_ops))
     for p in {pc["path"] for pc in pieces}:
         shutil.copyfile(p, out / "files" / p.name)
     return _finish(out, {"process": "uv", "custom": True, "line": "CUSTOM", "user": user, "pieces": len(pieces),
+                         "labels": True,
                          "sheets": max(p.sheet for p in placements), "barcodes": [],
                          "artworks": _artworks(custom)}, outputs)
 
@@ -380,7 +401,7 @@ def run_file(run_id, kind):
     if run_id.startswith("SUB_") and kind == "file":
         return _one_or_zip([p for p in out.glob(f"{run_id}_S*.pdf") if not p.stem.endswith("_LABELS")],
                            out / f"{run_id}_SHEETS.zip")
-    if run_id.startswith("SUB_") and kind == "labels":
+    if kind == "labels":
         return _one_or_zip(out.glob(f"{run_id}_S*_LABELS.pdf"), out / f"{run_id}_LABELS.zip")
     if kind == "spot":
         return _one_or_zip(out.glob(f"{run_id}_SPOT*.pdf"), out / f"{run_id}_SPOT.zip")

@@ -8,7 +8,7 @@ A small **Python 3.10–3.13 / FastAPI** service, about 3,600 lines, with a sing
 
 | Process | Items | Output per run |
 |---|---|---|
-| **UV Mix** | LUX and Mirror (`hp_order_items.batch_imposition` `LUX-…` / `MIRROR-…`) | File PDF, Die PDF, Photoshop-style Spot PDF ("Spot Color 1"), Excel, ZIP |
+| **UV Mix** | LUX and Mirror (`hp_order_items.batch_imposition` `LUX-…` / `MIRROR-…`) | File PDF, Die PDF, Photoshop-style Spot PDF ("Spot Color 1"), 2 × 1 in label PDFs per bed sheet, Excel, ZIP |
 | **Sublimation** | Bold / Classic / Essential, every model | One mirrored sheet PDF per template sheet, 2 × 1 in label PDFs per sheet, Excel, ZIP |
 
 The print team has approved the output formats against their Illustrator/Photoshop files and the RIP. The rules behind them are in `docs/claude-memory/` (for example `sublimation-rules.md`, `photoshop-spot-channel-psd.md`, `pdf-full-bed-bounding-box.md`). **Please keep the PDF output byte-compatible.** If a change alters the output, check it with the print team.

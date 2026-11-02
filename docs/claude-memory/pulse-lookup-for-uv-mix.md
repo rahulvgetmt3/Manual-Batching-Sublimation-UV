@@ -24,6 +24,6 @@ metadata:
 
 **DB access on the Mac:**
 - Connecting directly with `~/Dev/Pulse/.env` **works on this Mac** (2026-10-11). The Pulse project's memory note "running-db-queries" says Claude is blocked; that was a Windows auto-mode restriction and is stale here.
-- Port 3306 only answers when the current public IP is allowlisted. On 2026-10-11 it was 122.176.110.84.
+- Port 3306 only answers when the current public IP is allowlisted. On 2026-10-11 it was 122.176.110.84. On 2026-10-29 the Mac was on **103.199.112.140** and port 3306 timed out, so every lookup returned a bare 500 ("Unexpected token 'I', Internal S… is not valid JSON" in the UI). Check `nc -z -w 5 pulse.getmt3.com 3306` and `curl api.ipify.org` first when lookups fail.
 
 **SiteFlow:** `~/Dev/HP Siteflow` (`siteflow` package, `.env`) gives the live batch and "Current Work" event counts. Events are named Essential, Bold, Classic, Lux, Mirror, and so on.

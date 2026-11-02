@@ -53,6 +53,10 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-11-02: 2 x 1 labels for UV
+- Rahul asked for UV labels. Each UV run now writes `_S{n}_LABELS.pdf` per bed sheet, in bed order, using the Sublimation label design (Pulse items) or the basic custom label (UV custom artwork); they're in the ZIP and behind a new **Labels** button. Old UV runs have no labels, so the button shows only when run.json has `labels: true`. No BATCH ID page or MB number on UV: the bed PDFs carry no batch number, and those formats are print-approved.
+- Tested through the portal API: 5 real LUX items (5 labels) and 3 custom copies (3 labels). Team ZIPs not rebuilt yet.
+
 ### 2026-10-17 (end): sublimation merged into main
 - Merged `sublimation` into `main` (`98af6dc`); note conflicts resolved with the sublimation copies, and main's files now match sublimation exactly. **Work on `main` from now on.** README's branch and deploy notes updated.
 

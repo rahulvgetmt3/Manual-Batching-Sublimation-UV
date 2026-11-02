@@ -26,3 +26,5 @@ Rules Rahul has set for the UV mix outputs. Each came from a correction or an ex
 
 **How to apply:** keep them when changing the layout, PDF or Excel code. See [[uv-mix-portal-overview]].
 - **Custom artwork on UV (added 2026-10-12, branch `sublimation`):** same Custom artwork tab as Sublimation (upload/link, table with name + copies). Builds its own `UV_CUSTOM_…` batch: File/Die/Spot + Excel, die = exact image size, the typed name is the die label (shrunk if wider than the piece). Excel Reconcile: batch "CUSTOM", model = typed name. Rahul's ask: "just generate a die based on image size we upload and print name on die as we type in table". See [[sublimation-rules]].
+
+**2 x 1 labels (2026-11-02):** Rahul asked for the same 2 x 1 labels on UV as on Sublimation. One label PDF per bed sheet, in bed order (`runs._uv_labels`). This doesn't change "labels die-only", which is about the model labels printed on the bed PDFs. No BATCH ID page on UV unless asked for, because that would need a batch number on the approved bed PDFs.
