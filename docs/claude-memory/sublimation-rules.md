@@ -8,7 +8,7 @@ metadata:
 **Rahul's Sublimation requirements (2026-10-12):** built on branch `sublimation`, **merged into `main` on 2026-10-17**; work on `main` now.
 
 1. **Input:** the same as UV (scan, paste, CSV/XLSX upload).
-2. **Two templates; the default is 6UP Extended + CMYK export** for every batch (Rahul, 2026-10-12). Batches are grouped by family only, not by template. Both are 318 mm wide with 6 slots, each slot 131.1 mm wide:
+2. **Two templates; the default is 6UP Extended + As supplied export** for every batch (CMYK until 2026-11-15; changed after the trial print showed SWOP conversion turned RGB browns black). Batches are grouped by family only, not by template. Both are 318 mm wide with 6 slots, each slot 131.1 mm wide:
 
    | Template | Sheet height | Slot height |
    |---|---|---|
@@ -30,7 +30,7 @@ metadata:
    - **centred on the slot and allowed to cross the ⊕ registration marks**, as in the team's file. They shrink only if longer than the slot.
    - Rahul, 2026-10-12: any readable font is fine (operators only); let names cross the marks; the Reconcile model = Pulse model name is OK.
 8. **Colour:**
-   - No profile is ever embedded in converted images, and there's no OutputIntent.
+   - No profile is ever embedded, in converted or untouched images, and there's no OutputIntent. Until 2026-11-15 untouched CMYK JPEGs kept their embedded SWOP profile (ICCBased), and brown designs printed black; now they're plain DeviceCMYK with the JPEG's ICC segment stripped.
    - The **RGB/CMYK export choice applies to the artwork only**: a file already in the chosen mode is untouched, as with UV; otherwise it's converted with the team's **U.S. Web Coated (SWOP) v2** + sRGB, relative colorimetric with BPC.
    - Template marks stay as in the template (CMYK).
 9. **Green slot frames are not printed** (Rahul): they're removed from the template PDFs, and their positions are kept in templates.json.
@@ -71,7 +71,7 @@ Related: [[uv-mix-portal-overview]], [[pulse-design-system]], [[uv-mix-team-requ
 - **Input:** the **Custom artwork** tab, shown on Sublimation only. Drop or choose PNG/JPG/TIFF/WebP files (several at once), or paste a direct image link; Dropbox `dl=0` is turned into `dl=1`.
 - **Storage:** `app/custom.py` stores each upload in the file cache under `custom://<sha>.<ext>`, so thumbnails and sizing are reused. PDF/AI artwork isn't accepted; export it as PNG/TIFF.
 - **On screen:** a separate **Custom artwork** batch (family CUSTOM). Its **side-by-side table** has the image, an editable "Text printed beside the artwork" box (defaults to the file name), **Copies**, size, DPI with a low-DPI badge, and a "larger than slot" warning.
-- **Options:** the same Template, Export (CMYK default), Flip (default on) and a **Size** choice: Actual size (file DPI, default) or **Fit to slot** (proportional).
+- **Options:** the same Template, Export (As supplied default), Flip (default on) and a **Size** choice: Actual size (file DPI, default) or **Fit to slot** (proportional).
 - **Output:** `create_custom_run` writes one PDF per sheet, plus an Excel (Pieces: sheet, position, name, size, fit, file), a ZIP, and **basic 2 × 1 labels** per sheet.
   - **Label content:** run id | Custom artwork / the text / SHEET S1-n / QTY copy/copies / QR `run|S1-n|text`. This is `labels.build_custom_labels`.
   - **Run id:** `SUB_CUSTOM_<TPL>_<COLOR>_<date>_NN`.
@@ -84,3 +84,5 @@ Related: [[uv-mix-portal-overview]], [[pulse-design-system]], [[uv-mix-team-requ
 - **Status:** tested on the Mac with Pulse and custom runs on both templates; Rahul tested in the portal ("worked"). Barcode not yet test-scanned. Not in the Excel yet (offered as a column).
 
 **Model-wise sheets (2026-10-17):** Rahul: "operator needs same model to be in single sheet, give option to choose". Each Sublimation order batch has a **Sheets** option: **Model-wise** (default) or **Mix models**. `runs._sheet_groups(n, per_sheet, keys)` groups piece indexes by Pulse `model` in order of first appearance, `per_sheet` to a sheet; the last sheet of a model may be part-filled. `RunReq.by_model`; run.json `by_model`; the Pieces sheet in the Excel is sorted by sheet/position. Custom artwork has no model and is always filled in order. Tested: 8 Bold items / 5 models → 5 sheets model-wise vs 2 mixed; labels follow the sheets.
+
+**Choose own sheets (2026-11-02):** Rahul: pick which models or print files batch together, the rest mix ("18 Pro Max 5 items, others 1-1 or 2-3"). Third **Sheets** choice with a ticklist sorted by quantity. Rahul then asked that **Generate builds only what's selected and the rest stays in the queue**, never mixed automatically: each ticked row chooses how many full sheets to build now (13 on 6UP: 1 sheet of 6 or 2 of 12), pieces taken in scan order. Full sheets stay one model; selected pieces short of a full sheet **share** sheets (2 + 2 + 1 + 1 on 6UP = 1 sheet; one 5-piece model = 1 part-filled sheet). Unticked pieces stay queued for Mix models (Rahul, 2026-11-02). The server only sees the selected barcodes; its own-sheets rule still mixes anything else it's sent, for API callers. `_sheet_groups(n, per_sheet, keys, own)`, mirrored by `subSheetGroups` in index.html for the on-screen count and S1-1 positions. Keep both in step. Default is still Model-wise.

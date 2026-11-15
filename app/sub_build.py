@@ -99,8 +99,11 @@ def _converted_xobject(pdf, path, target):
 
 
 def artwork_xobject(pdf, path, color, mode=None):
-    """Untouched when the file is already in the chosen mode, else converted."""
-    if (mode or image_mode(path)) == color:
+    """Untouched when the file is already in the chosen mode, else converted. color "ASIS" (As
+    supplied): never converted, so RGB files stay RGB and CMYK stay CMYK in the same PDF and the
+    printer's software converts the RGB ones with its own settings (Rahul, 2026-11-15: SWOP
+    turned dark browns almost black)."""
+    if color == "ASIS" or (mode or image_mode(path)) == color:
         return _image_xobject(pdf, str(path))
     return _converted_xobject(pdf, path, color)
 

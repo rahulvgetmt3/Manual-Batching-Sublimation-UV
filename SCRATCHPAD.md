@@ -53,9 +53,28 @@ The chat is copied to [chat/](chat/). `cleanupPeriodDays` is 3650 in `~/.claude/
 
 ## Log
 
+### 2026-11-15 (later): Trial print OK, As supplied is the default
+- Rahul printed the Sublimation trial (6 Classic designs incl. RGB browns 333 / 510 / 519 and two CMYK controls): browns now print brown. **Export defaults to As supplied** (RGB stays RGB, CMYK stays CMYK, nothing converted); CMYK and RGB remain as choices. Pushed to `main` with Choose own sheets and the profile removal; team update ZIP built.
+- UV: the Duo black-to-green file (M-435RR-MS) is olive in the artwork itself; the design team re-uploads it as true black on Pulse.
+
+### 2026-11-15: Colour profiles removed from output PDFs
+- Rahul: brown Sublimation designs print black, and black UV designs print green; he suspected an embedded profile. Confirmed: `_image_xobject` attached the file's own ICC profile. Recent files: 83 Sublimation CMYK JPEGs carried **SWOP** (embedded untouched with ICCBased), and 89 of 119 UV PNGs carried **sRGB** (File and Die PDFs ICCBased). The Spot PDF and converted Sublimation files were already plain.
+- Fix: every image is now plain Device RGB/CMYK/Gray, and ICC segments are stripped from JPEG bytes (pixels unchanged, test added). Rebuilt real UV and Sublimation PDFs: no ICCBased, no profiles in JPEG data. The CMYK JPEG decoding was checked and was correct.
+- Sublimation print test passed (see entry above). UV print test of the File PDF with profiles removed still to confirm.
+
+### 2026-11-05: New Design PC login
+- New PC had the sample `.env` (portal login typed into the DB_ lines, `PORTAL_USERS` still the sample). Built a fresh package, `dist/Manual-Batching-Sublimation-TEAM-2026-11-05.zip`, from `7eea760`; Rahul sent it and it worked. It doesn't include "Choose own sheets", which is still uncommitted.
+
+### 2026-11-02 (later): Sublimation "Choose own sheets, mix the rest"
+- Rahul: e.g. 5 × 18 Pro Max get their own sheet and the small quantities go on mixed sheets. Third **Sheets** choice: tick models or print files (sorted most pieces first). `_sheet_groups(..., own)`; `own_sheets` + `group_by` on `/api/runs`. Also fixed the table's S1-1 column, which assumed scan order even for model-wise.
+- Rahul then refined it: a ticked model only keeps whole sheets; extras join the mix (7 on 6UP = 6 own + 1 mix). A ticked model too small to fill one sheet keeps its own part-filled sheet (confirmed: 5 pieces can be generated alone, or left in the queue for a mix).
+- Refined again: **Generate builds only the selected sheets; the rest stays in the queue**, not mixed automatically. Each ticked row picks how many sheets to build. Queue is the browser's item list (localStorage). Picks reset after each generate.
+- Refined again: selected pieces that don't fill a sheet **share** one (2 + 2 + 1 + 1 on a 6UP = 1 sheet) instead of one sheet per model.
+- Tested: real Bold batch through the API (own-sheet models + mixed rest, labels follow, by model and by print file), 400 random cases screen vs server with 0 mismatches. **Not clicked through in a browser** (none on this Mac for automation). Team ZIP not rebuilt.
+
 ### 2026-11-02: 2 x 1 labels for UV
 - Rahul asked for UV labels. Each UV run now writes `_S{n}_LABELS.pdf` per bed sheet, in bed order, using the Sublimation label design (Pulse items) or the basic custom label (UV custom artwork); they're in the ZIP and behind a new **Labels** button. Old UV runs have no labels, so the button shows only when run.json has `labels: true`. No BATCH ID page or MB number on UV: the bed PDFs carry no batch number, and those formats are print-approved.
-- Tested through the portal API: 5 real LUX items (5 labels) and 3 custom copies (3 labels). Team ZIPs not rebuilt yet.
+- Tested through the portal API: 5 real LUX items (5 labels) and 3 custom copies (3 labels). Built `dist/Manual-Batching-UPDATE-2026-11-02.zip` (no credentials) from `7eea760` for the teams.
 
 ### 2026-10-17 (end): sublimation merged into main
 - Merged `sublimation` into `main` (`98af6dc`); note conflicts resolved with the sublimation copies, and main's files now match sublimation exactly. **Work on `main` from now on.** README's branch and deploy notes updated.

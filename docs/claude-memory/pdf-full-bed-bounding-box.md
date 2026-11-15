@@ -22,3 +22,5 @@ Related: [[uv-mix-team-requirements]].
 - no hidden artwork layer.
 
 Now both PDFs are PDF 1.6 with all boxes set. Die labels are glyph outlines made with fontTools from the bundled `app/fonts/OpenSans-Regular.ttf`. The Die PDF has an OCG "Artwork" layer (off) and a "Die" layer (on), mirroring the team's Layer 1 and Layer 2. Whether this fixed the printer was still to be confirmed.
+
+**No colour profiles (2026-11-15):** UV File and Die PDFs used to attach a PNG's own sRGB profile (ICCBased), and black designs printed green. Now every image is plain DeviceRGB/CMYK/Gray, and JPEG ICC segments are stripped (`pdf_build._strip_jpeg_icc`). The Spot PDF was already plain DeviceRGB.

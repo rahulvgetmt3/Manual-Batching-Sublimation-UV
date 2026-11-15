@@ -112,6 +112,16 @@
              background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; }
   .subopts label { font-size:12px; font-weight:600; color:var(--gray-600); display:flex; align-items:center; gap:6px; }
   .subopts select { height:32px; }
+  .ownpick { margin-top:10px; padding:10px 12px; border:1px solid var(--gray-200); border-radius:10px; }
+  .ownpick-h { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:8px; }
+  .ownpick-h label { font-size:12px; font-weight:600; color:var(--gray-600); display:flex; align-items:center; gap:6px; }
+  .ownpick-h select { height:32px; }
+  .ownpick-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:4px 16px; max-height:260px; overflow:auto; }
+  .ownpick-row { display:flex; align-items:center; gap:8px; font-size:13px; padding:3px 0; min-height:34px; }
+  .ownpick-row label { flex:1; min-width:0; display:flex; align-items:center; gap:8px; cursor:pointer; }
+  .ownpick-row span { min-width:0; overflow-wrap:anywhere; }
+  .ownpick-row select { height:28px; font-size:12px; width:auto; }
+  .ownpick-row small { color:var(--muted); }
   .toggle { position:relative; width:38px; height:22px; flex:none; }
   .toggle input { opacity:0; width:0; height:0; }
   .toggle span { position:absolute; inset:0; background:var(--gray-300); border-radius:999px; transition:.15s; cursor:pointer; }
@@ -296,6 +306,7 @@ const PROC = {
 };
 let TPLS = {}, TPL_ORDER = [], TPL_DEFAULT = '6UP-EXT';
 const TPL_NAME = new Proxy({}, { get: (_, k) => (TPLS[k] ? TPLS[k].title.replace(/^Sublimation\s+/i, '') : k) });
+const COLOR_NAME = { CMYK: 'CMYK', RGB: 'RGB', ASIS: 'As supplied' };   // Sublimation export
 const perSheet = k => (TPLS[k] ? TPLS[k].slots : 6);
 // artworks per sheet PDF: every slot by default, or fewer when printing on fewer nesting jigs
 const usePer = g => { const o = optsFor(g), n = perSheet(o.template); return o.per > 0 ? Math.min(o.per, n) : n; };
@@ -480,7 +491,7 @@ function groups() {
   return all.filter(g => present.includes(g) || runResults[proc][g]);
 }
 function optsFor(g) {
-  if (!subOpts[g]) subOpts[g] = { template: TPL_DEFAULT, color: 'CMYK', mirror: true, fit: false, per: 0, byModel: true };   // defaults: Extended, CMYK, flipped, actual size, one model per sheet
+  if (!subOpts[g]) subOpts[g] = { template: TPL_DEFAULT, color: 'ASIS', mirror: true, fit: false, per: 0, sheets: 'model', groupBy: 'model', own: { model: [], print_code: [] }, ownSheets: { model: {}, print_code: {} } };   // defaults: Extended, as supplied, flipped, actual size, one model per sheet
   return subOpts[g];
 }
 function subControls(g) {
@@ -496,12 +507,14 @@ function subControls(g) {
         ${Array.from({ length: perSheet(o.template) - 1 }, (_, i) => i + 1).map(n => `<option value="${n}" ${usePer(g) === n && n < perSheet(o.template) ? 'selected' : ''}>${n} per sheet</option>`).join('')}
       </select></label>
     ${g === 'CUSTOM' ? '' : `<label>Sheets
-      <select class="pulse-input" data-opt="byModel" data-g="${esc(g)}">
-        <option value="1" ${o.byModel ? 'selected' : ''}>Model-wise (one model per sheet)</option>
-        <option value="" ${o.byModel ? '' : 'selected'}>Mix models on a sheet</option>
+      <select class="pulse-input" data-opt="sheets" data-g="${esc(g)}">
+        <option value="model" ${o.sheets === 'model' ? 'selected' : ''}>Model-wise (one model per sheet)</option>
+        <option value="mix" ${o.sheets === 'mix' ? 'selected' : ''}>Mix models on a sheet</option>
+        <option value="choose" ${o.sheets === 'choose' ? 'selected' : ''}>Choose own sheets, queue the rest</option>
       </select></label>`}
     <label>Export
       <select class="pulse-input" data-opt="color" data-g="${esc(g)}">
+        <option value="ASIS" ${o.color === 'ASIS' ? 'selected' : ''}>As supplied (RGB stays RGB, CMYK stays CMYK)</option>
         <option value="CMYK" ${o.color === 'CMYK' ? 'selected' : ''}>CMYK PDF</option>
         <option value="RGB" ${o.color === 'RGB' ? 'selected' : ''}>RGB PDF</option>
       </select></label>
@@ -534,13 +547,68 @@ function customTable(list) {
         <td><button class="x" title="Remove" data-rm="${esc(it.component_barcode)}">×</button></td>
       </tr>`; }).join('')}</tbody></table></div>`;
 }
-// Sublimation sheets: mixed = pieces / per sheet; model-wise = each model rounded up to whole sheets
+// Models (or print files) in a batch, most pieces first: [[key, [indexes]], ...]
+function subKeyCounts(list, field) {
+  const byKey = new Map();
+  list.forEach((it, i) => { const k = it[field] || ''; if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(i); });
+  return [...byKey.entries()].sort((a, b) => b[1].length - a[1].length);
+}
+// What is ticked for own sheets, ignoring anything since removed from the batch
+const ownPicked = (g, list) => { const o = optsFor(g); return o.own[o.groupBy].filter(k => list.some(it => it[o.groupBy] === k)); };
+// Pieces to build now for a ticked key: the sheets chosen (default all full sheets), or all of them if it can't fill one sheet
+function ownNow(g, key, n) {
+  const o = optsFor(g), per = usePer(g), full = Math.floor(n / per);
+  return full ? Math.min(o.ownSheets[o.groupBy][key] || full, full) * per : n;
+}
+// Indexes of the pieces "Choose own sheets" builds now, in list order; everything else stays in the queue
+function ownSelected(g, list) {
+  const o = optsFor(g), picked = ownPicked(g, list);
+  return subKeyCounts(list, o.groupBy).filter(([k]) => picked.includes(k))
+    .flatMap(([k, idx]) => idx.slice(0, ownNow(g, k, idx.length))).sort((x, y) => x - y);
+}
+// Piece indexes per sheet: same rule as runs._sheet_groups on the server
+function subSheetGroups(g, list) {
+  const o = optsFor(g), per = usePer(g);
+  const chunks = idx => Array.from({ length: Math.ceil(idx.length / per) }, (_, s) => idx.slice(s * per, (s + 1) * per));
+  if (o.sheets === 'choose') {
+    const sel = ownSelected(g, list), rest = [];
+    const own = subKeyCounts(sel.map(i => list[i]), o.groupBy).flatMap(([, idx]) => {
+      const n = Math.floor(idx.length / per) * per;   // full sheets stay single-model; the rest share sheets
+      if (n < idx.length) rest.push(idx.slice(n).map(i => sel[i]));
+      return chunks(idx.slice(0, n).map(i => sel[i]));
+    });
+    return [...own, ...chunks(rest.sort((a, b) => b.length - a.length).flat())];
+  }
+  if (o.sheets !== 'model') return chunks(list.map((_, i) => i));
+  const byModel = new Map();
+  list.forEach((it, i) => { const k = it.model || ''; if (!byModel.has(k)) byModel.set(k, []); byModel.get(k).push(i); });
+  return [...byModel.values()].flatMap(chunks);
+}
 function subSheetCount(g, list, pieceCount) {
-  const per = usePer(g);
-  if (g === 'CUSTOM' || !optsFor(g).byModel) return Math.ceil(pieceCount / per);
-  const byModel = {};
-  list.forEach(it => { byModel[it.model] = (byModel[it.model] || 0) + 1; });
-  return Object.values(byModel).reduce((n, c) => n + Math.ceil(c / per), 0);
+  return g === 'CUSTOM' ? Math.ceil(pieceCount / usePer(g)) : subSheetGroups(g, list).length;
+}
+// "Choose own sheets": tick models or print files, most pieces first, and how many sheets to build now; the rest stay queued
+function ownPicker(g, list) {
+  const o = optsFor(g), per = usePer(g), picked = ownPicked(g, list);
+  const rows = subKeyCounts(list, o.groupBy).filter(([k]) => k);
+  const now = ownSelected(g, list).length, sheets = subSheetGroups(g, list).length;
+  return `<div class="ownpick">
+    <div class="ownpick-h">
+      <label>Group by
+        <select class="pulse-input" data-opt="groupBy" data-g="${esc(g)}">
+          <option value="model" ${o.groupBy === 'model' ? 'selected' : ''}>Model</option>
+          <option value="print_code" ${o.groupBy === 'print_code' ? 'selected' : ''}>Print file</option>
+        </select></label>
+      <span class="meta">${picked.length ? `Generate now: ${now} piece(s) on ${sheets} sheet(s) · ${list.length - now} stay in the queue.` : 'Tick what to generate now. Everything else stays in the queue.'} Full sheets stay one model; smaller selections share a sheet.</span>
+    </div>
+    <div class="ownpick-list">${rows.map(([k, idx]) => {
+      const on = picked.includes(k), full = Math.floor(idx.length / per), n = ownNow(g, k, idx.length);
+      return `<div class="ownpick-row">
+        <label><input type="checkbox" data-own="${esc(k)}" data-g="${esc(g)}" ${on ? 'checked' : ''}>
+          <span>${esc(k)}${o.groupBy === 'print_code' ? ` <small>${esc(list[idx[0]].model)}</small>` : ''}</span></label>
+        ${on ? (full > 1 ? `<select class="pulse-input" data-ownqty="${esc(k)}" data-g="${esc(g)}">${Array.from({ length: full }, (_, i) => i + 1).map(c => `<option value="${c}" ${c * per === n ? 'selected' : ''}>${c} sheet${c > 1 ? 's' : ''} (${c * per})</option>`).join('')}</select>` : `<small>${n} now</small>`) : ''}
+        <b>× ${idx.length}</b></div>`; }).join('')}</div>
+  </div>`;
 }
 function render() {
   const html = groups().map(g => {
@@ -551,24 +619,28 @@ function render() {
     const id = gid(g);
     const pieceCount = g === 'CUSTOM' ? list.reduce((n, it) => n + (Number(it.copies) || 1), 0) : list.length;
     const sheets = proc === 'sub' ? subSheetCount(g, list, pieceCount) : sheetCounts[g];
+    const choosing = proc === 'sub' && g !== 'CUSTOM' && optsFor(g).sheets === 'choose';
+    const pos = {};   // piece index -> S<sheet>-<position>, as the sheets will be built
+    if (proc === 'sub' && g !== 'CUSTOM') subSheetGroups(g, list).forEach((idx, s) => idx.forEach((i, n) => { pos[i] = `S${s + 1}-${n + 1}`; }));
     return `<section class="card ${groupClass(g)}" id="batch-${id}">
       <div class="batch-h">
         ${proc === 'uv' ? lineBadge(g) : famBadge(g) + ' ' + lineBadge(optsFor(g).template)}
         <h2>${g === 'CUSTOM' ? `${list.length} artwork(s) · ${pieceCount} piece(s)` : `${list.length} piece(s)`}</h2>
-        <span class="meta" id="sheets-${id}">${list.length ? (sheets ? sheets + ' ' + PROC[proc].unit : '…') : ''}</span>
+        <span class="meta" id="sheets-${id}">${list.length ? (choosing ? `${sheets} sheet(s) selected · ${list.length - ownSelected(g, list).length} in queue` : sheets ? sheets + ' ' + PROC[proc].unit : '…') : ''}</span>
         ${attn ? `<span class="cd-badge cd-badge-warning">${attn} need a status check</span>` : ''}
         <span class="sp"></span>
         <button class="cd-btn cd-btn-secondary" data-clear="${esc(g)}" ${list.length ? '' : 'disabled'}>Clear</button>
-        <button class="cd-btn cd-btn-primary" data-gen="${esc(g)}" ${list.length ? '' : 'disabled'}>Generate ${esc(groupTitle(g))} PDF${proc === 'sub' ? '(s)' : 's'}</button>
+        <button class="cd-btn cd-btn-primary" data-gen="${esc(g)}" ${list.length && !(choosing && !ownPicked(g, list).length) ? '' : 'disabled'}>${choosing ? `Generate selected (${ownSelected(g, list).length})` : `Generate ${esc(groupTitle(g))} PDF${proc === 'sub' ? '(s)' : 's'}`}</button>
       </div>
       ${proc === 'sub' && list.length ? subControls(g) : ''}
+      ${choosing && list.length ? ownPicker(g, list) : ''}
       <div class="groups">${Object.entries(counts).map(([k, v]) => `${esc(k)} × ${v}`).join('   ·   ')}</div>
       ${g === 'CUSTOM' && list.length ? customTable(list) : ''}
       ${list.length && g !== 'CUSTOM' ? `<div class="tw nordic-table-container"><table class="nordic-table">
         <thead><tr><th>#</th><th></th><th>${proc === 'uv' ? 'Model' : 'Name on sheet'}</th><th>Print code</th><th>Batch</th><th>Order</th><th>Component</th><th>Size mm</th><th>Status (Pulse)</th><th></th></tr></thead>
         <tbody>${list.map((it, i) => `
           <tr class="${needsAttention(it) ? 'attn' : ''}">
-            <td>${proc === 'sub' ? `S${Math.floor(i / usePer(g)) + 1}-${i % usePer(g) + 1}` : i + 1}</td>
+            <td>${proc === 'sub' ? pos[i] || 'Queue' : i + 1}</td>
             <td><img loading="lazy" src="/api/thumb?url=${encodeURIComponent(it.fetch_url)}" alt=""></td>
             <td class="${proc === 'sub' ? 'wrap' : ''}"><div class="lbl" ${proc === 'sub' ? 'style="font-size:13px"' : ''}>${esc(it.label)}</div><small>${esc(proc === 'uv' ? it.model : it.batch_imposition)}</small></td>
             <td class="mono">${esc(it.print_code)}<br><small>${esc(it.print_sku)}</small></td>
@@ -610,9 +682,17 @@ $('batches').addEventListener('input', e => {
   if (n) { const it = items.find(x => x.component_barcode === n.dataset.cname); if (it) { it.name = n.value; it.label = n.value; save(); } }
   if (c) { const it = items.find(x => x.component_barcode === c.dataset.ccopies); if (it) { it.copies = Math.max(1, Math.min(500, parseInt(c.value) || 1)); save(); } }
 });
-const BOOL_OPTS = ['fit', 'byModel'];   // <select> options stored as true/false
+const BOOL_OPTS = ['fit'];   // <select> options stored as true/false
 $('batches').addEventListener('change', e => {
   if (e.target.closest('[data-ccopies]')) { render(); return; }
+  const tick = e.target.closest('[data-own]');
+  if (tick) {
+    const o = optsFor(tick.dataset.g), k = tick.dataset.own;
+    o.own[o.groupBy] = tick.checked ? [...o.own[o.groupBy], k] : o.own[o.groupBy].filter(x => x !== k);
+    render(); return;
+  }
+  const qty = e.target.closest('[data-ownqty]');
+  if (qty) { const o = optsFor(qty.dataset.g); o.ownSheets[o.groupBy][qty.dataset.ownqty] = parseInt(qty.value) || 1; render(); return; }
   const el = e.target.closest('[data-opt]'); if (!el) return;
   const o = optsFor(el.dataset.g);
   const opt = el.dataset.opt;
@@ -631,8 +711,10 @@ $('batches').addEventListener('click', async e => {
   if (gen) {
     const g = gen.dataset.gen;
     gen.disabled = true; gen.textContent = 'Building PDFs…';
-    const body = { barcodes: items.filter(it => groupOf(it) === g).map(it => it.component_barcode), process: proc };
-    if (proc === 'sub') { const o = optsFor(g); Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g), ...(g !== 'CUSTOM' && { by_model: o.byModel }) }); }
+    const inGroup = items.filter(it => groupOf(it) === g), o = proc === 'sub' ? optsFor(g) : null;
+    const choosing = o && g !== 'CUSTOM' && o.sheets === 'choose';
+    const body = { barcodes: (choosing ? ownSelected(g, inGroup).map(i => inGroup[i]) : inGroup).map(it => it.component_barcode), process: proc };
+    if (proc === 'sub') Object.assign(body, { template: o.template, color: o.color, mirror: o.mirror, fit: o.fit, per_sheet: usePer(g), ...(g !== 'CUSTOM' && { by_model: o.sheets === 'model', own_sheets: choosing ? ownPicked(g, inGroup) : [], group_by: o.groupBy }) });
     if (g === 'CUSTOM') {
       body.barcodes = [];
       body.custom = items.filter(it => it.custom).map(it => ({ fetch_url: it.fetch_url, name: (it.name || '').trim() || 'Custom artwork', copies: Number(it.copies) || 1 }));
@@ -642,11 +724,15 @@ $('batches').addEventListener('click', async e => {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
       const extra = d.process === 'sub'
-        ? ` · ${TPL_NAME[d.template]}${d.slots && d.per_sheet < d.slots ? ` · ${d.per_sheet} per sheet` : ''} ${d.custom ? '' : d.by_model ? ' · model-wise' : ' · models mixed'} · ${d.color} · ${d.mirror ? 'mirrored' : 'not mirrored'}${d.custom ? (d.fit ? ' · fit to slot' : ' · actual size') : ''}${d.converted ? ` · ${d.converted} file(s) converted to ${d.color}` : ''}`
+        ? ` · ${TPL_NAME[d.template]}${d.slots && d.per_sheet < d.slots ? ` · ${d.per_sheet} per sheet` : ''} ${d.custom ? '' : d.own_sheets && d.own_sheets.length ? ` · selected: ${esc(d.own_sheets.join(', '))}` : d.by_model ? ' · model-wise' : ' · models mixed'} · ${COLOR_NAME[d.color] || d.color} · ${d.mirror ? 'mirrored' : 'not mirrored'}${d.custom ? (d.fit ? ' · fit to slot' : ' · actual size') : ''}${d.converted ? ` · ${d.converted} file(s) converted to ${d.color}` : ''}`
           + (d.warnings && d.warnings.length ? `<br><span style="color:var(--warning)">⚠ ${d.warnings.map(esc).join('<br>⚠ ')}</span>` : '')
         : '';
       runResults[proc][g] = `<b>${esc(d.run_id)}</b> · ${d.pieces} pieces on ${d.sheets} sheet(s)${d.batches ? ` · batch ${d.batches.map((b, i) => `S${i + 1} = <b>${esc(b)}</b>`).join(', ')}` : ''}${extra}${dlButtons(d)}`;
-      items = items.filter(it => groupOf(it) !== g); store[proc] = items; save(); render(); loadHistory();
+      // only what was built leaves the queue; "Choose own sheets" leaves the rest for a later batch
+      const built = new Set(body.barcodes);
+      items = items.filter(it => groupOf(it) !== g || (choosing && !built.has(it.component_barcode)));
+      if (choosing) { o.own = { model: [], print_code: [] }; o.ownSheets = { model: {}, print_code: {} }; }
+      store[proc] = items; save(); render(); loadHistory();
     } catch (err) {
       const el = $('err-' + gid(g)); el.textContent = err.message; el.style.display = 'block';
       gen.disabled = false; gen.textContent = `Generate ${groupTitle(g)} PDF${proc === 'sub' ? '(s)' : 's'}`;
@@ -674,7 +760,7 @@ function dlButtons(m, small) {
 }
 const runProc = m => m.process || (m.run_id.startsWith('SUB_') ? 'sub' : 'uv');
 const runBadges = m => runProc(m) === 'sub'
-  ? `${famBadge(m.family)} ${lineBadge(m.template || m.line)} <span class="cd-badge cd-badge-gray">${esc(m.color || '')}${m.mirror === false ? ' · not mirrored' : ''}</span>`
+  ? `${famBadge(m.family)} ${lineBadge(m.template || m.line)} <span class="cd-badge cd-badge-gray">${esc(COLOR_NAME[m.color] || m.color || '')}${m.mirror === false ? ' · not mirrored' : ''}</span>`
   : lineBadge(m.line);
 
 let allRuns = [];
@@ -705,7 +791,7 @@ async function loadHistory() {
   const m = allRuns.find(x => runProc(x) === proc);
   $('last').innerHTML = m ? `<div class="cd-kpi-label">Last ${PROC[proc].name} batch</div>
       <div class="cd-kpi-value">${esc(m.run_id)}</div>
-      <div class="cd-kpi-sub">${runProc(m) === 'sub' ? `${esc(FAMILY_NAME[m.family] || '')} · ${esc(TPL_NAME[m.template] || '')} · ${esc(m.color || '')}` : esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
+      <div class="cd-kpi-sub">${runProc(m) === 'sub' ? `${esc(FAMILY_NAME[m.family] || '')} · ${esc(TPL_NAME[m.template] || '')} · ${esc(COLOR_NAME[m.color] || m.color || '')}` : esc(LINE_NAME[m.line] || m.line)} · ${m.pieces} pieces · ${m.sheets} sheet(s)<br>${esc(m.created.replace('T', ' '))} · ${esc(m.user)}</div>
       ${dlButtons({ ...m, process: runProc(m) })}`
     : `<div class="cd-kpi-label">Last ${PROC[proc].name} batch</div><div class="cd-kpi-sub" style="margin-top:6px">No batches generated yet.</div>`;
 }

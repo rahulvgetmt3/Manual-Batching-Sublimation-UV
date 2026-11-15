@@ -71,30 +71,43 @@ def _text_outline(text, cx, baseline, size=LABEL_SIZE, max_w=None):
     return " ".join(ops) + " f" if ops else ""
 
 
-def _icc_stream(pdf, icc, n):
-    s = pikepdf.Stream(pdf, zlib.compress(icc))
-    s.Filter = Name.FlateDecode
-    s.N = n
-    return Array([Name.ICCBased, s])
+def _strip_jpeg_icc(raw):
+    """JPEG bytes without the APP2 ICC_PROFILE segments. Everything else, including the image data
+    and the Adobe APP14 marker, is kept byte for byte, so no pixel changes."""
+    if raw[:2] != b"\xff\xd8":
+        return raw
+    out, i = [raw[:2]], 2
+    while i + 4 <= len(raw) and raw[i] == 0xFF:
+        marker = raw[i + 1]
+        if marker == 0xDA:          # start of scan: image data follows, copy the rest as is
+            break
+        seg_len = int.from_bytes(raw[i + 2:i + 4], "big")
+        seg = raw[i:i + 2 + seg_len]
+        if not (marker == 0xE2 and seg[4:16] == b"ICC_PROFILE\x00"):
+            out.append(seg)
+        i += 2 + seg_len
+    out.append(raw[i:])
+    return b"".join(out)
 
 
 def _image_xobject(pdf, path):
-    """Embed one image without changing its colour data."""
+    """Embed one image without changing its colour data, and with no colour profile: plain
+    DeviceRGB / DeviceCMYK / DeviceGray, so the RIP treats every image the same way. A profile
+    inside the file made the RIP colour-manage that image differently (brown printed black on
+    Sublimation, black printed green on UV; Rahul, 2026-11-15)."""
     with Image.open(path) as im:
         fmt = im.format
-        icc = im.info.get("icc_profile")
         mode = im.mode
 
         if fmt == "JPEG" and mode in ("RGB", "L", "CMYK"):
-            # JPEG goes in byte-for-byte.
-            raw = open(path, "rb").read()
-            n = {"RGB": 3, "L": 1, "CMYK": 4}[mode]
+            # JPEG goes in byte-for-byte, minus any embedded profile.
+            raw = _strip_jpeg_icc(open(path, "rb").read())
             device = {"RGB": Name.DeviceRGB, "L": Name.DeviceGray, "CMYK": Name.DeviceCMYK}[mode]
             xo = pikepdf.Stream(pdf, raw)
             xo.Type, xo.Subtype = Name.XObject, Name.Image
             xo.Width, xo.Height, xo.BitsPerComponent = im.width, im.height, 8
             xo.Filter = Name.DCTDecode
-            xo.ColorSpace = _icc_stream(pdf, icc, n) if icc else device
+            xo.ColorSpace = device
             if mode == "CMYK" and "adobe" in im.info:
                 xo.Decode = Array([1, 0] * 4)  # Adobe-inverted CMYK JPEG
             return xo
@@ -118,13 +131,12 @@ def _image_xobject(pdf, path):
         if alpha is not None and alpha.getextrema() == (255, 255):
             alpha = None  # fully opaque, no mask needed
 
-        n = {"RGB": 3, "L": 1, "CMYK": 4}[mode]
         device = {"RGB": Name.DeviceRGB, "L": Name.DeviceGray, "CMYK": Name.DeviceCMYK}[mode]
         xo = pikepdf.Stream(pdf, zlib.compress(im.tobytes(), 6))
         xo.Type, xo.Subtype = Name.XObject, Name.Image
         xo.Width, xo.Height, xo.BitsPerComponent = im.width, im.height, 8
         xo.Filter = Name.FlateDecode
-        xo.ColorSpace = _icc_stream(pdf, icc, n) if icc else device
+        xo.ColorSpace = device
         if alpha is not None:
             sm = pikepdf.Stream(pdf, zlib.compress(alpha.tobytes(), 6))
             sm.Type, sm.Subtype = Name.XObject, Name.Image

@@ -49,9 +49,11 @@ For a 2180 × 1220 mm UV bed, each run gives you:
 
 ### Colour handling
 The PDFs carry each file's pixels exactly as supplied. There is no CMYK conversion, no
-resampling and no OutputIntent. If a PNG has an embedded ICC profile, that same profile
-is attached; if not, the image is plain DeviceRGB. Transparency is kept as a soft mask.
-JPEGs are embedded byte-for-byte.
+resampling and no OutputIntent. **No colour profile is attached**, even when the file has one:
+every image is plain DeviceRGB (or DeviceCMYK / DeviceGray), so the RIP treats all artwork the
+same way. A profile inside a file made the RIP colour-manage that image differently, for example
+black printing green (2026-11-15). Transparency is kept as a soft mask. JPEGs are embedded
+byte for byte, minus any embedded profile.
 
 ### Full-bed artboard
 Both PDFs carry the same invisible frame the team's Illustrator files have: a 0.75 pt
@@ -72,9 +74,9 @@ Sublimation items are **all Bold, Classic and Essential items**, every model, on
 
 - **Batches:** one per family (Bold, Classic and Essential never share a sheet). Each batch has these controls:
   - **Template:** any template; the default is **6UP Extended**.
-  - **Export:** **CMYK** (the default) or RGB.
+  - **Export:** **As supplied** (the default: RGB artwork stays RGB, CMYK stays CMYK, nothing converted), CMYK or RGB. As supplied fixed brown designs printing black (trial print, 2026-11-15).
   - **Flip artwork:** on by default, giving mirrored artwork.
-  - **Sheets:** **Model-wise** (the default: each sheet holds one model only, so the last sheet of a model may be part-filled) or **Mix models** (every sheet filled in scan order). Models are taken from Pulse; custom artwork is always filled in order.
+  - **Sheets:** **Model-wise** (the default: each sheet holds one model only, so the last sheet of a model may be part-filled), **Mix models** (every sheet filled in scan order), or **Choose own sheets, queue the rest**. The last one lists the batch's models or print files, most pieces first. Tick what to build now and how many sheets of each (13 on a 6UP: 1 sheet of 6 or 2 sheets of 12), and **Generate builds only those**, in scan order. Everything else stays in the queue on screen for a later batch; set Sheets to Mix models to batch it. Full sheets stay one model; selected pieces that don't fill a sheet share one (2 + 2 + 1 + 1 on a 6UP is one sheet, and a single 5-piece model is one part-filled sheet). Models are taken from Pulse; custom artwork is always filled in order.
   - **Artworks per sheet:** 1 up to the template's slot count, for printing on fewer nesting jigs. The first slots are filled in order (TL, TR, ML, …); the rest stay empty. Labels and positions follow the chosen count.
 - **Output:**
   - one PDF per sheet (`…_S1.pdf`, `…_S2.pdf`, …);
@@ -82,7 +84,7 @@ Sublimation items are **all Bold, Classic and Essential items**, every model, on
   - an Excel (Reconcile + Pieces) and a ZIP of everything.
 - **Sheet batch numbers:** every sheet gets its own batch number (`MB00001`, `MB00002`, …; they never repeat, the last one used is in `data/runs/batch_counter.txt`). It's printed in red just right of the colour bar, like SiteFlow's batch ID, and the **first page of that sheet's label PDF** is a batch label with the same number, a Code 128 barcode, the route (Bold / Classic / Essential / Custom), date, quantity, product, "Sheet n of N" and the sheet's file name, so the operator can match labels to sheets. On uploaded templates the number goes top right, above the slots.
 - **Placement:** artwork at true size (300 DPI), centred in its slot and mirrored with the placement matrix only. The `OrderID-Model-CaseType` name sits beside each piece, reading bottom to top. Names are centred on the slot and may cross registration marks.
-- **Colour:** files already in the chosen mode go in untouched. Others are converted with the team's **U.S. Web Coated (SWOP) v2** + sRGB (relative colorimetric + BPC), and **no profile is embedded**. Template marks stay as they are in the template.
+- **Colour:** files already in the chosen mode go in with their numbers untouched. Others are converted with the team's **U.S. Web Coated (SWOP) v2** + sRGB (relative colorimetric + BPC). **No profile is embedded in either case.** Files that carried their own profile, often SWOP on CMYK JPEGs, are embedded as plain CMYK; until 2026-11-15 that profile was attached, and brown designs printed black. Template marks stay as they are in the template.
 - **Custom artwork:** the typed name is printed beside the piece, and **Copies** repeats it. Each custom batch can place artwork at **actual size** or **fit to slot** (scaled proportionally, never stretched), with the same template, flip, CMYK/RGB and artworks-per-sheet options, plus basic 2 × 1 labels.
 - **Templates:** any size (1UP, 6UP, 10UP, …). Upload them under **Manual Batching ▾ › Sublimation › Templates**: a dieline PDF, or an `.ai` with PDF compatibility, without artwork, with one stroked rectangle per piece. The system detects:
   - the slots;

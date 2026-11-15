@@ -7,6 +7,7 @@
 2. Sheet grouping: mixed fills sheets; model-wise never puts two models on a sheet.
 3. Batch numbers continue from the counter, and a damaged counter stops the run.
 4. UV labels: one PDF per bed sheet, in bed order.
+5. Images go into PDFs with no colour profile, JPEG pixels untouched.
 """
 
 import inspect
@@ -37,7 +38,7 @@ def test_run_requests_match_builders():
     main._require_user = lambda request: "test"
     custom = [{"fetch_url": "custom://x.png", "name": "x", "copies": 1}]
     for body in ({"barcodes": ["B1"]}, {"custom": custom},
-                 {"process": "sub", "barcodes": ["B1"], "by_model": False},
+                 {"process": "sub", "barcodes": ["B1"], "by_model": False, "own_sheets": ["iPhone 18"], "group_by": "model"},
                  {"process": "sub", "custom": custom, "fit": True, "per_sheet": 2}):
         main.new_run(main.RunReq(**body), None)
     assert called == ["create_run", "create_uv_custom_run", "create_sub_run", "create_custom_run"], called
@@ -49,6 +50,15 @@ def test_sheet_groups():
     groups = runs._sheet_groups(len(models), 3, models)
     assert all(len({models[i] for i in g}) == 1 for g in groups), groups
     assert groups == [[0, 2, 3], [6], [1, 4], [5]], groups
+    # A has 4 pieces on a 3-up: 3 fill its own sheet, the extra one joins the mix, B's side by side
+    assert runs._sheet_groups(len(models), 3, models, {"A"}) == [[0, 2, 3], [1, 4, 6], [5]]
+    # B can't fill a sheet, so it joins the mix with everything else
+    assert runs._sheet_groups(len(models), 3, models, {"B"}) == [[0, 2, 3], [6, 1, 4], [5]]
+    # several picks too small to fill a sheet share one (2 + 2 + 1 + 1 on a 6UP)
+    small = ["A", "A", "B", "B", "C", "D"]
+    assert runs._sheet_groups(6, 6, small, set(small)) == [[0, 1, 2, 3, 4, 5]]
+    # exact sheets leave nothing over
+    assert runs._sheet_groups(4, 2, ["A"] * 4, {"A"}) == [[0, 1], [2, 3]]
 
 
 def test_batch_counter():
@@ -80,6 +90,31 @@ def test_uv_labels_follow_bed_order():
     assert [p.name for p in pdfs] == ["R_S1_LABELS.pdf", "R_S2_LABELS.pdf"]
     with pikepdf.open(pdfs[0]) as pdf:
         assert len(pdf.pages) == 2
+
+
+def test_images_have_no_colour_profile():
+    import io
+    from PIL import Image, ImageCms
+    from app.pdf_build import _image_xobject, _strip_jpeg_icc
+    tmp = Path(tempfile.mkdtemp())
+    srgb = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    Image.new("RGBA", (8, 8), (90, 50, 20, 255)).save(tmp / "a.png", icc_profile=srgb)
+    Image.new("CMYK", (8, 8), (0, 60, 90, 70)).save(tmp / "b.jpg", icc_profile=srgb)
+    pdf = pikepdf.new()
+    for name, space in (("a.png", "/DeviceRGB"), ("b.jpg", "/DeviceCMYK")):
+        xo = _image_xobject(pdf, tmp / name)
+        assert str(xo.ColorSpace) == space, (name, xo.ColorSpace)
+    raw = (tmp / "b.jpg").read_bytes()
+    stripped = _strip_jpeg_icc(raw)
+    assert b"ICC_PROFILE" in raw and b"ICC_PROFILE" not in stripped
+    a, b = Image.open(io.BytesIO(raw)), Image.open(io.BytesIO(stripped))
+    assert a.tobytes() == b.tobytes() and "icc_profile" not in b.info
+    # Sublimation "As supplied": RGB stays RGB, CMYK stays CMYK, nothing converted
+    from app.sub_build import artwork_xobject
+    Image.new("RGB", (8, 8), (66, 33, 26)).save(tmp / "c.png")
+    assert str(artwork_xobject(pdf, tmp / "c.png", "ASIS").ColorSpace) == "/DeviceRGB"
+    assert str(artwork_xobject(pdf, tmp / "b.jpg", "ASIS").ColorSpace) == "/DeviceCMYK"
+    assert str(artwork_xobject(pdf, tmp / "c.png", "CMYK").ColorSpace) == "/DeviceCMYK"
 
 
 if __name__ == "__main__":

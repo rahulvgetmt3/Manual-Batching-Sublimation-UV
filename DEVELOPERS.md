@@ -63,13 +63,14 @@ Every route except `/login` and `/healthz` needs a logged-in user.
 
 `POST /api/runs` body (`RunReq`):
 ```json
-{"process": "sub", "barcodes": ["B433…"], "template": "6UP-EXT", "color": "CMYK",
+{"process": "sub", "barcodes": ["B433…"], "template": "6UP-EXT", "color": "ASIS",
  "mirror": true, "per_sheet": 0, "by_model": true,
  "custom": [{"fetch_url": "custom://….png", "name": "text", "copies": 2}], "fit": false}
 ```
 - **Process:** `uv` uses only `barcodes` or `custom`.
 - **`per_sheet`:** 0 means every template slot.
 - **`by_model`:** one model per sheet. It's the default; `false` mixes models.
+- **`own_sheets`** + **`group_by`** (`model` or `print_code`): the listed models or print codes fill their own sheets, and anything else sent, including pieces short of a full sheet, shares mixed sheets. The screen's "Choose own sheets" sends only the pieces selected, so nothing is mixed and the rest stays queued in the browser. A non-empty list overrides `by_model`. The screen previews the result with `subSheetGroups`, which must match `runs._sheet_groups`.
 
 The response is the run metadata: `run_id`, `sheets`, `batches` (MB numbers per sheet), `warnings` and so on.
 
@@ -109,6 +110,7 @@ set -a; source .env; set +a
 Docker: see README › "Going live on a server". The Dockerfile runs one worker because big runs hold several GB of image data.
 
 ## Things to know
+- **No colour profiles in output PDFs:** `pdf_build._image_xobject` embeds plain Device colour spaces and strips ICC segments from JPEGs. Profiles in source files made the RIP colour-manage some images differently (brown printed black, black printed green). Keep it that way unless the print team asks otherwise.
 - **Text encoding:** read and write text files with `encoding="utf-8"`. Windows otherwise defaults to cp1252.
 - **Single folder per run:** run folders are claimed with an atomic `mkdir`, and the batch counter uses a file lock. Both are safe with several workers on one host.
 - **Operator rules:** these come from the print team and are written down in `docs/claude-memory/`, for example right-aligned beds, names that may cross registration marks, and no colour profile embedded in converted images. Treat them as requirements.

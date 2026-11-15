@@ -265,9 +265,9 @@ def _sub_options(template, color, per_sheet):
     templates = registry()
     if template not in templates:
         raise ValueError(f"Unknown template {template!r}")
-    color = (color or "CMYK").upper()        # default: CMYK (Rahul)
-    if color not in ("RGB", "CMYK"):
-        raise ValueError("Colour must be RGB or CMYK")
+    color = (color or "ASIS").upper()        # default: ASIS = as supplied, nothing converted (trial print OK 2026-11-15)
+    if color not in ("RGB", "CMYK", "ASIS"):
+        raise ValueError("Export must be RGB, CMYK or ASIS (as supplied)")
     tpl = templates[template]
     per_sheet = _per_sheet(templates, template, per_sheet)
     meta = {"line": template, "template": template, "template_title": tpl["title"], "per_sheet": per_sheet,
@@ -275,16 +275,37 @@ def _sub_options(template, color, per_sheet):
     return tpl, template, color, per_sheet, meta
 
 
-def _sheet_groups(n, per_sheet, keys=None):
+def _converted(pieces, color):
+    """How many artworks the export converts (none when exporting as supplied)."""
+    return 0 if color == "ASIS" else sum(1 for pc in pieces if pc["src_mode"] != color)
+
+
+def _sheet_groups(n, per_sheet, keys=None, own=None):
     """Piece indexes per sheet. keys=None: in order, `per_sheet` to a sheet (models mixed).
     keys (one per piece, e.g. the model): each key on its own sheets, in order of first appearance,
-    so a sheet never mixes models; the last sheet of a model may be part-filled."""
+    so a sheet never mixes models; the last sheet of a model may be part-filled.
+    own (some of the keys): those fill their own sheets, largest first. Everything else, including
+    an own key's pieces beyond its last full sheet and an own key too small to fill one, shares
+    mixed sheets after them, with equal keys side by side, largest first (Rahul, 2026-11-02).
+    app/static/index.html (subSheetGroups) mirrors this for the on-screen preview."""
+    def chunks(idx):
+        return [idx[i:i + per_sheet] for i in range(0, len(idx), per_sheet)]
+
     if keys is None:
-        return [list(range(i, min(i + per_sheet, n))) for i in range(0, n, per_sheet)]
+        return chunks(list(range(n)))
     by_key = {}
     for i, k in enumerate(keys):
         by_key.setdefault(k, []).append(i)
-    return [idx[i:i + per_sheet] for idx in by_key.values() for i in range(0, len(idx), per_sheet)]
+    if own is None:
+        return [c for idx in by_key.values() for c in chunks(idx)]
+    largest = sorted(by_key.items(), key=lambda kv: -len(kv[1]))   # stable: ties keep first-appearance order
+    own_sheets, rest = [], []
+    for k, idx in largest:
+        full = len(idx) // per_sheet * per_sheet if k in own else 0
+        own_sheets += chunks(idx[:full])
+        if idx[full:]:
+            rest.append(idx[full:])
+    return own_sheets + chunks([i for idx in sorted(rest, key=lambda r: -len(r)) for i in idx])
 
 
 def _sub_sheets(out, run_id, tpl, color, pieces, sheets, mirror, labels, route):
@@ -306,18 +327,22 @@ def _sub_sheets(out, run_id, tpl, color, pieces, sheets, mirror, labels, route):
         build_labels(entries, lbl_path, lbl_path.stem, ops_fn, batch={
             "batch": batch, "route": route, "date": date, "qty": len(chunk),
             "product": f"{route} {tpl['title'].replace('Sublimation ', '')}", "sheet": s, "sheets": len(sheets),
-            "attributes": [color, "Mirrored" if mirror else "Not mirrored"], "file": pdf_path.name})
+            "attributes": ["As supplied" if color == "ASIS" else color, "Mirrored" if mirror else "Not mirrored"], "file": pdf_path.name})
         sheet_pdfs.append(pdf_path)
         label_pdfs.append(lbl_path)
     return sheet_pdfs, label_pdfs, warnings, batches
 
 
-def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, per_sheet=0,
-                   by_model=True):
+def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="ASIS", user="", mirror=True, per_sheet=0,
+                   by_model=True, own_sheets=None, group_by="model"):
     """Sublimation: one PDF per sheet in the chosen template, artwork mirrored and centred,
     names beside each piece, artwork exported as RGB or CMYK. by_model: each sheet holds one
-    model only (Rahul, 2026-10-17: operators load one model per sheet); else models are mixed."""
+    model only (Rahul, 2026-10-17: operators load one model per sheet); else models are mixed.
+    own_sheets: only these models (group_by="model") or print codes (group_by="print_code") get
+    their own sheets and the rest are mixed (Rahul, 2026-11-02); overrides by_model."""
     tpl, template, color, per_sheet, opts = _sub_options(template, color, per_sheet)
+    if group_by not in ("model", "print_code"):
+        raise ValueError("Group by must be model or print_code")
     barcodes = normalise(barcodes)
     if not barcodes:
         raise ValueError("No barcodes scanned")
@@ -335,7 +360,14 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
         info = image_info(path)
         pieces.append({"path": path, "w_pt": info["w_pt"], "h_pt": info["h_pt"], "name": it.label,
                        "src_mode": info["mode"]})
-    sheets = _sheet_groups(len(items), per_sheet, [it.model for it in items] if by_model else None)
+    own = set(own_sheets or [])
+    if own:
+        keys = [getattr(it, group_by) for it in items]
+        if own - set(keys):
+            raise ValueError(f"Not in this batch: {', '.join(sorted(own - set(keys)))}")
+        sheets = _sheet_groups(len(items), per_sheet, keys, own)
+    else:
+        sheets = _sheet_groups(len(items), per_sheet, [it.model for it in items] if by_model else None)
     placements = [Placement(index=i, sheet=s, position=pos, x=0, y=0, w=pieces[i]["w_pt"], h=pieces[i]["h_pt"])
                   for s, idx in enumerate(sheets, 1) for pos, i in enumerate(idx, 1)]
 
@@ -350,13 +382,13 @@ def create_sub_run(barcodes, template=DEFAULT_TEMPLATE, color="CMYK", user="", m
         it, src = items[p.index], pieces[p.index]["path"]
         name = f"S{p.sheet}-{p.position}_{it.batch_number}_{_safe(it.print_code)}_{it.component_barcode}{src.suffix}"
         shutil.copyfile(src, out / "files" / name)
-    return _finish(out, {"process": "sub", **opts, "family": family, "mirror": bool(mirror), "by_model": bool(by_model), "user": user,
+    return _finish(out, {"process": "sub", **opts, "family": family, "mirror": bool(mirror), "by_model": bool(by_model) and not own, "own_sheets": sorted(own), "group_by": group_by, "user": user,
                          "pieces": len(items), "sheets": len(sheet_pdfs), "batches": batches,
-                         "converted": sum(1 for pc in pieces if pc["src_mode"] != color),
+                         "converted": _converted(pieces, color),
                          "warnings": warnings, "barcodes": barcodes}, [*sheet_pdfs, *label_pdfs, xlsx])
 
 
-def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", mirror=True, fit=False, per_sheet=0):
+def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="ASIS", user="", mirror=True, fit=False, per_sheet=0):
     """Sublimation sheets from artwork uploaded by the team (no Pulse order): same template,
     flip and RGB/CMYK options; copies repeat an artwork; optional fit-to-slot; basic 2x1 labels."""
     tpl, template, color, per_sheet, opts = _sub_options(template, color, per_sheet)
@@ -379,7 +411,7 @@ def create_custom_run(custom, template=DEFAULT_TEMPLATE, color="CMYK", user="", 
         shutil.copyfile(p, out / "files" / p.name)
     return _finish(out, {"process": "sub", "custom": True, **opts, "family": "CUSTOM", "mirror": bool(mirror),
                          "fit": bool(fit), "user": user, "pieces": len(pieces), "sheets": len(sheet_pdfs), "batches": batches,
-                         "converted": sum(1 for pc in pieces if pc["src_mode"] != color), "warnings": warnings,
+                         "converted": _converted(pieces, color), "warnings": warnings,
                          "artworks": _artworks(custom)}, [*sheet_pdfs, *label_pdfs, xlsx])
 
 

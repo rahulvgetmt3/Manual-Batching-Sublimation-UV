@@ -210,12 +210,14 @@ class RunReq(BaseModel):
     barcodes: list = []    # empty for a custom-artwork batch
     process: str = "uv"
     template: str = "6UP-EXT"  # sublimation: 6UP / 6UP-EXT (default Extended)
-    color: str = "CMYK"        # sublimation: RGB / CMYK (default CMYK)
+    color: str = "ASIS"        # sublimation: RGB / CMYK / ASIS (default ASIS: as supplied, trial print 2026-11-15)
     mirror: bool = True    # sublimation: flip artwork (default on)
     custom: list = []      # UV or Sublimation: uploaded artwork [{fetch_url, name, copies}] instead of barcodes
     fit: bool = False      # sublimation custom: scale artwork to fit the slot
     per_sheet: int = 0     # sublimation: artworks per sheet PDF (0 = every slot; fewer for fewer jigs)
     by_model: bool = True   # sublimation orders: one model per sheet (default, as on screen); False mixes models
+    own_sheets: list = []   # sublimation orders: only these models / print codes get own sheets, the rest mix
+    group_by: str = "model"  # what own_sheets lists: model or print_code
 
 
 @app.post("/api/runs")
@@ -227,7 +229,8 @@ def new_run(req: RunReq, request: Request):
                                      per_sheet=req.per_sheet)
         if _process(req.process) == "sub":
             return create_sub_run([str(b) for b in req.barcodes], req.template, req.color, user=user, mirror=req.mirror,
-                                  per_sheet=req.per_sheet, by_model=req.by_model)
+                                  per_sheet=req.per_sheet, by_model=req.by_model,
+                                  own_sheets=[str(k) for k in req.own_sheets], group_by=req.group_by)
         if req.custom:
             return create_uv_custom_run(req.custom, user=user)
         return create_run([str(b) for b in req.barcodes], user=user)
