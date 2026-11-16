@@ -1,4 +1,4 @@
-- [UV Mix portal overview](uv-mix-portal-overview.md) — what the portal does, status end of 2026-10-11 (team testing on Windows, printer check pending), logins (Rahul/uvteam), team-history options, plan to move to MT3 org + host
+- [UV Mix portal overview](uv-mix-portal-overview.md) — what the portal does, logins (Rahul/uvteam/DesignTeam), hosting plan; status 2026-11-16: As supplied default, no colour profiles, own sheets, ZIP 2026-11-15
 - [UV Mix team requirements](uv-mix-team-requirements.md) — confirmed rules: LUX/Mirror separate, labels die-only, full bed, right-aligned no flip, Reconcile A/B/C with LUX-15-PL model
 - [Photoshop spot channel](photoshop-spot-channel-psd.md) — spot = artwork alpha; Photoshop-style PDF needs Producer/XMP + private PieceInfo + Alph block; spot stored inverted (0 = ink)
 - [PDF full-bed bounding box](pdf-full-bed-bounding-box.md) — invisible 0%-opacity frame forces 2180×1220; PDF 1.6, all boxes, outlined labels, hidden artwork layer for RIP
